@@ -1,0 +1,24 @@
+# OS and editor metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local environment files
+.env
+.env.local
+
+# Lab 01 runtime uploaded files (preserve .gitkeep and pre-seeded security fixtures)
+labs/01-php-upload-defense/stage1-vulnerable/src/uploads/*
+!labs/01-php-upload-defense/stage1-vulnerable/src/uploads/.gitkeep
+labs/01-php-upload-defense/stage2-app-only/src/uploads/*
+!labs/01-php-upload-defense/stage2-app-only/src/uploads/.gitkeep
+labs/01-php-upload-defense/stage3-defense-in-depth/src/uploads/*
+!labs/01-php-upload-defense/stage3-defense-in-depth/src/uploads/.gitkeep
+!labs/01-php-upload-defense/stage3-defense-in-depth/src/uploads/infra-guard-check.phtml
+labs/01-php-upload-defense/stage3-defense-in-depth/storage/*
+!labs/01-php-upload-defense/stage3-defense-in-depth/storage/.gitkeep
