@@ -1,6 +1,6 @@
 # Lab 01: File Upload Defense & Defense in Depth on PHP + Apache
 
-[日本語](./README.md) | [Root Guide](../../README.en.md) | [Safety Policy](../../SAFETY.en.md) | [Roadmap](../../docs/roadmap.en.md)
+[日本語](./README.md) | [Root Guide](../../README.en.md) | [Safety Policy](../../SAFETY.en.md) | [Glossary](../../docs/glossary.en.md) | [Roadmap](../../docs/roadmap.en.md)
 
 > [!CAUTION]
 > Stage 1 (`8081`) and Stage 2 (`8082`) are intentionally vulnerable environments strictly for local study. Never expose them on public servers or shared networks; follow [SAFETY.en.md](../../SAFETY.en.md).
@@ -176,4 +176,5 @@ flowchart TD
 - **Participant Threat Modeling Worksheet (with answer key)**: [docs/en/worksheet.md](./docs/en/worksheet.md)
 - **Lightning Talk Demo Script (5-min & 10-min)**: [docs/en/lt-script.md](./docs/en/lt-script.md)
 - **Samples & Automated Verifier Reference**: [samples/README.en.md](./samples/README.en.md) | [tests/README.en.md](./tests/README.en.md)
+- **Beginner Glossary**: [../../docs/glossary.en.md](../../docs/glossary.en.md)
 - **Future Multi-Lab Candidates**: [../../docs/roadmap.en.md](../../docs/roadmap.en.md)

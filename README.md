@@ -1,6 +1,6 @@
 # Upload-to-Execution Lab
 
-[English](./README.en.md) | [安全ポリシー](./SAFETY.md) | [ロードマップ](./docs/roadmap.md)
+[English](./README.en.md) | [安全ポリシー](./SAFETY.md) | [用語集](./docs/glossary.md) | [ロードマップ](./docs/roadmap.md)
 
 > [!CAUTION]
 > 本リポジトリは意図的に脆弱な実装を含むローカル専用の学習教材です。公開サーバや共有ネットワークには絶対にデプロイせず、必ず [SAFETY.md](./SAFETY.md) を確認してください。
@@ -28,6 +28,7 @@ upload-to-execution-lab/
 ├── SAFETY.md                              # 安全ポリシー (SAFETY.en.md: 英語版)
 ├── LICENSE                                # MIT License
 ├── docs/
+│   ├── glossary.md                        # 初学者向け用語集 (glossary.en.md: 英語版)
 │   └── roadmap.md                         # 拡張ロードマップ (roadmap.en.md: 英語版)
 └── labs/
     └── 01-php-upload-defense/
@@ -94,4 +95,4 @@ docker compose down
   - [脅威モデリング・ワークシート](./labs/01-php-upload-defense/docs/ja/worksheet.md)
   - [LT 登壇台本](./labs/01-php-upload-defense/docs/ja/lt-script.md)
 - **サンプル・自動テスト解説**: [samples/README.md](./labs/01-php-upload-defense/samples/README.md) | [tests/README.md](./labs/01-php-upload-defense/tests/README.md)
-- **安全ポリシー・今後の計画**: [SAFETY.md](./SAFETY.md) | [docs/roadmap.md](./docs/roadmap.md) | [LICENSE](./LICENSE)
+- **用語集・安全ポリシー・今後の計画**: [docs/glossary.md](./docs/glossary.md) | [SAFETY.md](./SAFETY.md) | [docs/roadmap.md](./docs/roadmap.md) | [LICENSE](./LICENSE)

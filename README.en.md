@@ -1,6 +1,6 @@
 # Upload-to-Execution Lab
 
-[日本語](./README.md) | [Safety Policy](./SAFETY.en.md) | [Roadmap](./docs/roadmap.en.md)
+[日本語](./README.md) | [Safety Policy](./SAFETY.en.md) | [Glossary](./docs/glossary.en.md) | [Roadmap](./docs/roadmap.en.md)
 
 > [!CAUTION]
 > This repository contains intentionally vulnerable applications strictly for local security education. Never deploy it to public servers or shared networks; read [SAFETY.en.md](./SAFETY.en.md) before use.
@@ -28,6 +28,7 @@ upload-to-execution-lab/
 ├── SAFETY.md                              # Safety policy in Japanese (SAFETY.en.md: English)
 ├── LICENSE                                # MIT License
 ├── docs/
+│   ├── glossary.md                        # Glossary in Japanese (glossary.en.md: English)
 │   └── roadmap.md                         # Lab roadmap in Japanese (roadmap.en.md: English)
 └── labs/
     └── 01-php-upload-defense/
@@ -94,4 +95,4 @@ See [SAFETY.en.md](./SAFETY.en.md) for complete technical specifications.
   - [Threat Modeling Worksheet](./labs/01-php-upload-defense/docs/en/worksheet.md)
   - [Lightning Talk Demo Script](./labs/01-php-upload-defense/docs/en/lt-script.md)
 - **Samples & Test Suite**: [samples/README.en.md](./labs/01-php-upload-defense/samples/README.en.md) | [tests/README.en.md](./labs/01-php-upload-defense/tests/README.en.md)
-- **Safety Policy & Roadmap**: [SAFETY.en.md](./SAFETY.en.md) | [docs/roadmap.en.md](./docs/roadmap.en.md) | [LICENSE](./LICENSE)
+- **Glossary, Safety Policy & Roadmap**: [docs/glossary.en.md](./docs/glossary.en.md) | [SAFETY.en.md](./SAFETY.en.md) | [docs/roadmap.en.md](./docs/roadmap.en.md) | [LICENSE](./LICENSE)

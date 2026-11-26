@@ -2,7 +2,7 @@
 
 [English](../en/hands-on-guide.md)
 
-関連資料：[Lab 01 概要](../../README.md) | [ワークシート](./worksheet.md) | [LT実演台本](./lt-script.md) | [サンプル解説](../../samples/README.md) | [自動検証](../../tests/README.md)
+関連資料：[Lab 01 概要](../../README.md) | [ワークシート](./worksheet.md) | [LT実演台本](./lt-script.md) | [サンプル解説](../../samples/README.md) | [自動検証](../../tests/README.md) | [用語集](../../../../docs/glossary.md)
 
 > [!CAUTION]
 > 本ラボは `127.0.0.1` 限定のローカル学習用環境です。公開サーバや共有ネットワークへ絶対にデプロイせず、同梱の無害なサンプルのみを使用してください（詳細: [SAFETY.md](../../../../SAFETY.md)）。

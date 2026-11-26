@@ -2,7 +2,7 @@
 
 [日本語](../ja/hands-on-guide.md)
 
-Related Docs: [Lab 01 Overview](../../README.en.md) | [Worksheet](./worksheet.md) | [LT Demo Script](./lt-script.md) | [Sample Files](../../samples/README.en.md) | [Automated Verification](../../tests/README.en.md)
+Related Docs: [Lab 01 Overview](../../README.en.md) | [Worksheet](./worksheet.md) | [LT Demo Script](./lt-script.md) | [Sample Files](../../samples/README.en.md) | [Automated Verification](../../tests/README.en.md) | [Glossary](../../../../docs/glossary.en.md)
 
 > [!CAUTION]
 > For local educational use on `127.0.0.1` only. Never deploy to public servers or shared networks, and use only the harmless files in `samples/` (see [SAFETY.en.md](../../../../SAFETY.en.md)).
