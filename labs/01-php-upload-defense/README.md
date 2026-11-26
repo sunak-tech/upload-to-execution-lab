@@ -1,6 +1,6 @@
 # Lab 01: PHP + Apache ファイルアップロード防御と多層設計
 
-[English](./README.en.md) | [トップページ](../../README.md) | [安全ポリシー](../../SAFETY.md) | [ロードマップ](../../docs/roadmap.md)
+[English](./README.en.md) | [トップページ](../../README.md) | [安全ポリシー](../../SAFETY.md) | [用語集](../../docs/glossary.md) | [ロードマップ](../../docs/roadmap.md)
 
 > [!CAUTION]
 > Stage 1（`8081`）と Stage 2（`8082`）は意図的に脆弱なローカル専用環境です。公開サーバや共有ネットワークには絶対に露出させず、[SAFETY.md](../../SAFETY.md) を遵守してください。
@@ -176,4 +176,5 @@ flowchart TD
 - **脅威モデリング・ワークシート（模範解答付き）**: [docs/ja/worksheet.md](./docs/ja/worksheet.md)
 - **LT ライブデモ台本（5 分版 / 10 分版）**: [docs/ja/lt-script.md](./docs/ja/lt-script.md)
 - **サンプル・自動検証リファレンス**: [samples/README.md](./samples/README.md) | [tests/README.md](./tests/README.md)
+- **初学者向け用語集**: [../../docs/glossary.md](../../docs/glossary.md)
 - **今後の発展ラボ候補**: [../../docs/roadmap.md](../../docs/roadmap.md)
