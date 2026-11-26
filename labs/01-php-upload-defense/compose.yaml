@@ -1,0 +1,57 @@
+name: lab01-php-upload-defense
+
+services:
+  stage1-vulnerable:
+    build:
+      context: ./stage1-vulnerable
+    ports:
+      - "127.0.0.1:8081:8080"
+    networks:
+      - lab_net
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  stage2-app-only:
+    build:
+      context: ./stage2-app-only
+    ports:
+      - "127.0.0.1:8082:8080"
+    networks:
+      - lab_net
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  stage3-defense-in-depth:
+    build:
+      context: ./stage3-defense-in-depth
+    ports:
+      - "127.0.0.1:8083:8080"
+    networks:
+      - lab_net
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  verifier:
+    profiles:
+      - test
+    build:
+      context: ./stage3-defense-in-depth
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace:ro
+    depends_on:
+      - stage1-vulnerable
+      - stage2-app-only
+      - stage3-defense-in-depth
+    networks:
+      - lab_net
+    security_opt:
+      - no-new-privileges:true
+    command: ["php", "/workspace/tests/verify.php"]
+
+networks:
+  lab_net:
+    internal: true
