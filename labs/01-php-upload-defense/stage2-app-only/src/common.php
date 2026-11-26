@@ -50,8 +50,8 @@ function render_stage2_main(string $lang, string $flashHtml = ''): void
     $files = list_uploaded_files();
 
     $title = $isEn
-        ? 'Stage 2: App-Only Naive Defense (.php Denylist)'
-        : 'Stage 2: アプリ層のみの不十分な防御（.php ブラックリスト）';
+        ? 'Stage 2: App-Only Defense (.php Denylist)'
+        : 'Stage 2: 単一層防御の限界（.php 拒否リストのみ）';
 
     ob_start();
     if ($flashHtml !== '') {
@@ -59,74 +59,74 @@ function render_stage2_main(string $lang, string $flashHtml = ''): void
     }
     ?>
     <section class="card stage-summary stage-warn">
-      <div class="stage-badge warn"><?= $isEn ? 'STAGE 2 — INSUFFICIENT APP-ONLY CHECK' : 'STAGE 2 — 不十分な単一層チェック' ?></div>
+      <div class="stage-badge warn"><?= $isEn ? 'STAGE 2 — INSUFFICIENT APP-ONLY CHECK' : 'STAGE 2 — 不十分な単一層防御' ?></div>
       <h1><?= esc($title) ?></h1>
       <?php if ($isEn): ?>
         <p>
-          This stage adds a naive application-layer denylist that blocks <code>.php</code> only, leaving a critical trust-boundary gap between PHP validation and Apache handler configuration.
+          Blocking <code>.php</code> alone fails when PHP validation and Apache handler rules disagree across <strong>Upload &rarr; Store &rarr; Serve &rarr; Execute</strong>.
         </p>
         <ul class="boundary-list">
-          <li><strong>App Layer Assumption Failure:</strong> Blocks <code>.php</code> via a single denylist rule, overlooking alternative extensions such as <code>.phtml</code>.</li>
-          <li><strong>Why Client <code>Content-Type</code> Cannot Be Trusted:</strong> Request headers like <code>Content-Type: image/png</code> are supplied by the client (browser or <code>curl</code>) and can be forged trivially without changing file contents.</li>
-          <li><strong>Storage &amp; Web Server Mismatch:</strong> Files still land inside <code>DocumentRoot</code> (<code>/var/www/html/uploads/</code>) where Apache's <code>&lt;FilesMatch "\.(php|phtml)$"&gt;</code> interprets <code>.phtml</code> as PHP!</li>
+          <li><strong>Denylist Gap:</strong> Rejects <code>.php</code> only, missing alternative extensions such as <code>.phtml</code>.</li>
+          <li><strong>Untrusted <code>Content-Type</code>:</strong> Request headers like <code>Content-Type: image/png</code> are controlled by the client and easily forged via <code>curl</code>.</li>
+          <li><strong>Web Server Mismatch:</strong> Files still land in <code>DocumentRoot</code> where Apache's <code>&lt;FilesMatch "\.(php|phtml)$"&gt;</code> executes <code>.phtml</code> as PHP.</li>
         </ul>
       <?php else: ?>
         <p>
-          このステージではアプリ層で <code>.php</code> 拡張子のみを拒否するブラックリストを追加していますが、PHP 側の検証と Apache 側のハンドラ設定の「認識のズレ」により突破されます。
+          <strong>アップロード → 保存 → 配信 → 実行</strong> のうち、アプリ層の <code>.php</code> 拒否リストだけでは Apache 側との解釈のズレを突かれて突破されます。
         </p>
         <ul class="boundary-list">
-          <li><strong>アプリ層の思い込み（ブラックリストの限界）:</strong> <code>.php</code> のみを拒否し、<code>.phtml</code> などの別拡張子を見落としています。</li>
-          <li><strong>クライアント送信 <code>Content-Type</code> が信頼できない理由:</strong> マルチパート送信時の <code>Content-Type: image/png</code> ヘッダはブラウザや <code>curl</code> 側で任意に偽装できるため、防御境界として機能しません。</li>
-          <li><strong>ストレージ・Web サーバ層の不整合:</strong> 保存先が依然として <code>DocumentRoot</code> 内（<code>/var/www/html/uploads/</code>）であり、Apache の <code>&lt;FilesMatch "\.(php|phtml)$"&gt;</code> によって <code>.phtml</code> が PHP として動作します。</li>
+          <li><strong>拒否リストの抜け穴:</strong> <code>.php</code> だけを拒否しており、<code>.phtml</code> などの別拡張子を通過させます。</li>
+          <li><strong>信頼できない <code>Content-Type</code>:</strong> リクエストの <code>Content-Type: image/png</code> ヘッダはクライアント側で自在に偽装できます。</li>
+          <li><strong>Web サーバ層との不整合:</strong> 保存先が <code>DocumentRoot</code> 内のままであり、Apache の <code>&lt;FilesMatch "\.(php|phtml)$"&gt;</code> により <code>.phtml</code> が実行されます。</li>
         </ul>
       <?php endif; ?>
     </section>
 
     <div class="grid-two">
       <section class="card">
-        <h2><?= $isEn ? '1. Upload a File' : '1. ファイルをアップロード' ?></h2>
+        <h2><?= $isEn ? '1. Upload File' : '1. ファイルアップロード' ?></h2>
         <p class="muted">
           <?= $isEn
-              ? 'Compare samples/marker-basic.php (blocked: 400) vs. samples/marker-bypass.phtml (accepted: 200 & interpreted!).'
-              : 'samples/marker-basic.php（400 で拒否）と samples/marker-bypass.phtml（200 で通過し動作！）を比較してください。' ?>
+              ? 'Compare marker-basic.php (blocked: 400) and marker-bypass.phtml (executes: 200).'
+              : 'marker-basic.php（400 拒否）と marker-bypass.phtml（200 通過・実行）を比較します。' ?>
         </p>
         <form action="/upload.php?lang=<?= esc($lang) ?>" method="post" enctype="multipart/form-data" class="upload-form">
           <label for="file-input" class="file-label">
-            <?= $isEn ? 'Select file to upload:' : 'アップロードするファイルを選択:' ?>
+            <?= $isEn ? 'Choose file:' : 'ファイルを選択:' ?>
           </label>
           <input id="file-input" type="file" name="file" required>
           <button type="submit" class="btn btn-primary">
-            <?= $isEn ? 'Upload to Stage 2' : 'Stage 2 にアップロード' ?>
+            <?= $isEn ? 'Upload' : 'アップロード' ?>
           </button>
         </form>
       </section>
 
       <section class="card">
-        <h2><?= $isEn ? '2. Lab State Control (Reset)' : '2. ラボ状態のリセット' ?></h2>
+        <h2><?= $isEn ? '2. Reset State' : '2. 状態リセット' ?></h2>
         <p class="muted">
           <?= $isEn
-              ? 'Removes all uploaded files in Stage 2 (/var/www/html/uploads/) while preserving .gitkeep.'
-              : 'Stage 2 のアップロード済みファイルをすべて削除し、初期状態に戻します（.gitkeep は保持）。' ?>
+              ? 'Deletes all uploaded files in /var/www/html/uploads/.'
+              : '/var/www/html/uploads/ 内のアップロード済みファイルを削除します。' ?>
         </p>
         <form action="/reset.php?lang=<?= esc($lang) ?>" method="post">
           <button type="submit" class="btn btn-secondary">
-            <?= $isEn ? 'Reset Stage 2 Uploads' : 'Stage 2 のアップロードをリセット' ?>
+            <?= $isEn ? 'Reset Stage 2' : 'Stage 2 をリセット' ?>
           </button>
         </form>
       </section>
     </div>
 
     <section class="card">
-      <h2><?= $isEn ? 'Uploaded Files in /uploads/' : '/uploads/ 内のアップロード済みファイル一覧' ?></h2>
+      <h2><?= $isEn ? 'Uploaded Files (/uploads/)' : 'アップロード済みファイル一覧' ?></h2>
       <?php if ($files === []): ?>
-        <p class="muted"><?= $isEn ? 'No uploaded files currently stored.' : '現在アップロードされているファイルはありません。' ?></p>
+        <p class="muted"><?= $isEn ? 'No uploaded files.' : 'アップロードされたファイルはありません。' ?></p>
       <?php else: ?>
         <table class="file-table">
           <thead>
             <tr>
-              <th><?= $isEn ? 'Stored URL (Inside DocumentRoot)' : '保存先 URL（DocumentRoot 内）' ?></th>
-              <th><?= $isEn ? 'Size (bytes)' : 'サイズ (bytes)' ?></th>
-              <th><?= $isEn ? 'Modified (UTC)' : '更新日時 (UTC)' ?></th>
+              <th><?= $isEn ? 'Stored URL' : '保存先 URL' ?></th>
+              <th><?= $isEn ? 'Size (bytes)' : 'バイト数' ?></th>
+              <th><?= $isEn ? 'Updated (UTC)' : 'UTC 更新日時' ?></th>
             </tr>
           </thead>
           <tbody>
@@ -157,7 +157,7 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= esc($pageTitle) ?> | Upload-to-Execution Defense Lab</title>
+  <title><?= esc($pageTitle) ?> | Lab 01</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -170,7 +170,7 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
     .safety-banner {
       background: #991b1b;
       color: #ffffff;
-      padding: 0.75rem 1.25rem;
+      padding: 0.7rem 1.25rem;
       font-weight: 700;
       text-align: center;
       border-bottom: 3px solid #ef4444;
@@ -179,7 +179,7 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
     .topbar {
       background: #1f2937;
       color: #f9fafb;
-      padding: 0.75rem 1.25rem;
+      padding: 0.7rem 1.25rem;
     }
     .topbar-inner {
       max-width: 980px;
@@ -292,9 +292,9 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
 <body>
   <div class="safety-banner" role="alert">
     <?php if ($isEn): ?>
-      WARNING: FOR LOCAL EDUCATIONAL USE ONLY - DO NOT DEPLOY PUBLICLY (127.0.0.1 Isolated Container Lab)
+      WARNING: FOR LOCAL EDUCATIONAL USE ONLY - DO NOT DEPLOY PUBLICLY
     <?php else: ?>
-      警告: ローカル学習専用・公開サーバへのデプロイ厳禁（127.0.0.1 ローカル分離ネットワーク専用ラボ）
+      警告: ローカル学習専用・公開サーバへのデプロイ厳禁
     <?php endif; ?>
   </div>
 
@@ -302,18 +302,18 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
     <div class="topbar-inner">
       <nav class="stage-nav" aria-label="Stage Switcher">
         <a class="stage-link" href="http://127.0.0.1:8081/?lang=<?= esc($lang) ?>">
-          Stage 1 (:8081 <?= $isEn ? 'Vulnerable' : '脆弱' ?>)
+          Stage 1 :8081 <?= $isEn ? 'Vulnerable' : '脆弱' ?>
         </a>
         <a class="stage-link active" href="http://127.0.0.1:8082/?lang=<?= esc($lang) ?>">
-          Stage 2 (:8082 <?= $isEn ? 'App-Only' : 'アプリ層のみ' ?>)
+          Stage 2 :8082 <?= $isEn ? 'App-Only' : '単一層防御' ?>
         </a>
         <a class="stage-link" href="http://127.0.0.1:8083/?lang=<?= esc($lang) ?>">
-          Stage 3 (:8083 <?= $isEn ? 'Defense-in-Depth' : '多層防御' ?>)
+          Stage 3 :8083 <?= $isEn ? 'Defense-in-Depth' : '多層防御' ?>
         </a>
       </nav>
       <nav class="lang-nav" aria-label="Language Switcher">
-        <a class="lang-link <?= !$isEn ? 'active' : '' ?>" href="/?lang=ja">日本語 (JA)</a>
-        <a class="lang-link <?= $isEn ? 'active' : '' ?>" href="/?lang=en">English (EN)</a>
+        <a class="lang-link <?= !$isEn ? 'active' : '' ?>" href="/?lang=ja">日本語</a>
+        <a class="lang-link <?= $isEn ? 'active' : '' ?>" href="/?lang=en">English</a>
       </nav>
     </div>
   </header>

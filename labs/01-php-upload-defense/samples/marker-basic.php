@@ -39,8 +39,7 @@ $esc = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES |
     <span class="badge">HARMLESS LAB MARKER</span>
     <h1><?= $esc($marker) ?></h1>
     <p>
-      Server-side PHP interpretation occurred inside the upload directory.<br>
-      アップロード先ディレクトリ内でサーバサイド PHP 解釈が発生しました（無害な固定情報のみを表示しています）。
+      アップロード先ディレクトリ内で PHP として実行されました（無害な固定情報のみ表示）。
     </p>
     <dl>
       <dt>Marker ID</dt>
@@ -51,7 +50,7 @@ $esc = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES |
       <dd><?= $esc($processUser) ?></dd>
       <dt>Container Host</dt>
       <dd><?= $esc($hostName) ?></dd>
-      <dt>Timestamp (UTC)</dt>
+      <dt>UTC Time</dt>
       <dd><?= $esc($utcTime) ?></dd>
     </dl>
   </div>

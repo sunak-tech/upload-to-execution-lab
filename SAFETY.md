@@ -1,49 +1,45 @@
-# Safety Policy / 安全設計ポリシー (`SAFETY.md`)
+# 安全設計ポリシー
 
-**🌐 Detailed Policy Documents / 詳細ポリシー文書:**
-**[🇯🇵 日本語版安全ポリシー (docs/safety.ja.md)](./docs/safety.ja.md)** | **[🇺🇸 English Safety Policy (docs/safety.en.md)](./docs/safety.en.md)**
-
----
+[English](./SAFETY.en.md) | [トップページ](./README.md) | [Lab 01](./labs/01-php-upload-defense/README.md) | [ロードマップ](./docs/roadmap.md)
 
 > [!CAUTION]
-> **ローカル学習専用・公開サーバへのデプロイ厳禁 / FOR LOCAL EDUCATIONAL USE ONLY — DO NOT DEPLOY PUBLICLY**
+> **ローカル学習専用・公開サーバへのデプロイ厳禁**: 本リポジトリは意図的に脆弱な Web アプリケーション（Stage 1・Stage 2）を含みます。個人のローカル端末上の Docker 環境でのみ実行してください。
 
-本リポジトリを利用・改変・フォーク・教材追加するすべての利用者およびコントリビュータは、以下の**絶対遵守ルール（Non-Negotiable Safety Rules）**に従う必要があります。
+## 1. 絶対遵守ルール
 
-Every user, workshop facilitator, and contributor using, modifying, or extending this repository must strictly follow these **Non-Negotiable Safety Rules**.
+本リポジトリの利用者・勉強会主催者・コントリビュータは以下のルールを厳守してください。
 
----
+1. **外部公開・クラウドデプロイの禁止**: パブリッククラウド、VPS、社内共有サーバへの配置、および `0.0.0.0` バインドやトンネルツール（`ngrok`、`cloudflared`、`ssh -R` 等）による外部公開を一切禁止します。
+2. **ループバック限定バインド**: すべての公開ポートは `127.0.0.1:<ホストポート>:<コンテナポート>` 形式で固定し、ホスト自身からのみ接続可能にします。
+3. **コンテナの外部通信遮断**: ラボ用ネットワークには `internal: true` を設定し、コンテナからインターネットへの通信を遮断します。
+4. **非特権ユーザーでの実行**: コンテナ内の Web・アプリケーションプロセスは非 root ユーザー（`www-data`、内部ポート `8080`）で稼働させます。
+5. **Web シェル化の排除**: 検証用サンプルは固定文字列マーカーと読み取り専用の環境情報のみを出力します。外部入力の参照や OS コマンド実行関数の使用は厳禁です。
+6. **第三者システムへの試行禁止**: 本教材の知識およびサンプルファイルは、自身のローカル環境上の本ラボコンテナに対してのみ使用してください。
 
-## 絶対遵守ルール / Core Non-Negotiable Safety Rules
+## 2. 技術的ガードレール仕様
 
-1. **公開デプロイ・外部公開の厳禁 / Zero Public or Shared Network Exposure**
-   - クラウド環境（AWS / GCP / Azure 等）、VPS、共有開発サーバーへのデプロイ、および `0.0.0.0` バインドやトンネルツール（ngrok / Cloudflare Tunnel / `ssh -R` 等）による外部公開を一切禁止します。
-   - Never deploy to cloud instances, VPS hosts, or shared servers, and never expose ports via `0.0.0.0` bindings or tunneling tools (ngrok, Cloudflare Tunnel, `ssh -R`, etc.).
+利用者の注意だけに頼らず、[`labs/01-php-upload-defense/compose.yaml`](./labs/01-php-upload-defense/compose.yaml) と各ステージ実装に以下の安全制約を組み込んでいます。
 
-2. **ホスト `127.0.0.1` 限定バインド / Strict `127.0.0.1` Loopback Binding**
-   - すべての Docker Compose 公開ポートは `127.0.0.1:<host_port>:<container_port>` 形式で指定し、ホスト自身からのみ到達可能にします。
-   - All published container ports must explicitly bind `127.0.0.1:<host_port>:<container_port>` so only the local host can connect.
+- **`127.0.0.1` 明示バインド**: Stage 1〜3 を `"127.0.0.1:8081:8080"`〜`"8083:8080"` に固定し、LAN 内の他端末からのアクセスを防ぎます。
+- **内部隔離ネットワークと完全オフライン UI**: `lab_net` に `internal: true` を適用し、HTML / CSS からも外部 CDN・外部フォント・外部スクリプトを一切排除しています。
+- **最小権限ディレクトリ設計**: `www-data` が書き込める領域をアップロード先（Stage 1・2 は `/var/www/html/uploads`、Stage 3 は `/var/lab-storage/uploads`）のみに限定し、アプリコードと Apache 設定の改ざんを防いでいます。
+- **無害な固定マーカー検証ファイル**: `samples/marker-basic.php` と `samples/marker-bypass.phtml` は固定マーカー（`LAB_EXECUTION_MARKER_STAGE1` / `STAGE2`）と `PHP_VERSION`・実行ユーザー・ホスト名・UTC 時刻のみを返します。`$_GET` / `$_POST` / `$_REQUEST` / `$_COOKIE` / `$_FILES` 等の入力参照および `system` / `exec` / `passthru` / `shell_exec` / `popen` / `proc_open` / `eval` / `assert` は一切含まず、`tests/verify.php` が静的スキャンで検証します。
+- **常時警告表示と即時リセット**: 全画面上部にローカル専用警告バナーを表示し、UI の初期化ボタン（`POST /reset.php`）でアップロード済みファイルを即座に削除できます（Stage 1・2 でも `basename()` によりディレクトリ外への書き込みを防止）。
 
-3. **コンテナの外部ネットワーク隔離 / Container Network Isolation (`internal: true`)**
-   - ラボ用 Docker ネットワークは `internal: true` とし、コンテナから外部インターネットへの通信を遮断します。
-   - Lab Docker networks must set `internal: true` to block outbound internet egress from containers.
+## 3. 運用ルール
 
-4. **非特権ユーザーでの実行 / Non-Root Container Processes**
-   - コンテナ内のアプリケーションサーバーは非 root ユーザー（例: `www-data`、内部ポート `8080`）で実行します。
-   - Application processes inside containers must run as an unprivileged non-root user (e.g., `www-data` on internal port `8080`).
+- **終了後の即時停止**: 演習やデモの終了後は必ず `docker compose down` でコンテナを停止・破棄してください。
+- **勉強会での利用方法**: 共有サーバは立てず、参加者各自のローカル PC で起動するか、講師 PC の画面共有で実演してください。
+- **脆弱コードの流用禁止**: `stage1-vulnerable` と `stage2-app-only` はアンチパターン教材です。本番実装へ絶対にコピーしないでください。
 
-5. **完全無害な検証用ファイル（Web シェル厳禁） / Harmless Fixed-Marker Samples Only (No Webshells)**
-   - 検証用スクリプトは固定文字列マーカーと読み取り専用の環境情報のみを出力します。外部入力（`$_GET`, `$_POST`, `$_REQUEST`, `$_COOKIE`, `$_FILES` 等）の参照や、OS コマンド実行・動的評価（`system`, `exec`, `passthru`, `shell_exec`, `popen`, `proc_open`, `eval`, `assert` 等）の実装・同梱は厳禁です。
-   - Sample payloads may output only static marker strings and read-only runtime metadata. Reading external input (`$_GET`, `$_POST`, `$_REQUEST`, `$_COOKIE`, `$_FILES`, etc.) or invoking command/code execution primitives (`system`, `exec`, `passthru`, `shell_exec`, `popen`, `proc_open`, `eval`, `assert`, etc.) is strictly prohibited.
+## 4. 新規ラボ追加時の必須チェックリスト
 
-6. **第三者システムへのテスト厳禁 / Authorized Local Lab Targets Only**
-   - 本教材で扱う知識およびサンプルファイルは、自身のローカル環境上の本ラボコンテナに対してのみ使用してください。
-   - Use the techniques and sample files in this repository exclusively against your own local lab containers.
+[ロードマップ](./docs/roadmap.md) に沿って新しいラボを追加する際は、以下をすべて満たす必要があります。
 
----
-
-## 詳細ドキュメントへのリンク / Read the Full Safety Policy
-
-- **🇯🇵 日本語詳細**: [docs/safety.ja.md](./docs/safety.ja.md) — 技術的ガードレールの実装仕様、運用ルール、将来ラボ追加時のコントリビュータ規約
-- **🇺🇸 English Details**: [docs/safety.en.md](./docs/safety.en.md) — Technical guardrail specifications, operational rules, and contributor safety requirements for future labs
-- **🏠 トップページへ戻る / Back to Root**: [README.md](./README.md) ([日本語](./README.ja.md) | [English](./README.en.md))
+- [ ] `compose.yaml` の全公開ポートに `127.0.0.1:` が明示されていること（`"8080:8080"` や `0.0.0.0` は不可）。
+- [ ] コンテナネットワークに `internal: true` が設定され、外部通信が発生しないこと。
+- [ ] コンテナプロセスが非 root ユーザーで動作し、書き込み可能ディレクトリが最小限であること。
+- [ ] サンプルファイルが外部入力を受け取らず、コマンド実行・動的評価関数を含まない固定マーカー方式であること。
+- [ ] 外部 CDN 依存がゼロで、初回ビルド後に完全オフラインで動作すること。
+- [ ] 全 UI ページに日本語（`ローカル学習専用`）・英語（`FOR LOCAL EDUCATIONAL USE ONLY`）の警告バナーが表示されること。
+- [ ] `docker compose --profile test run --rm verifier` で機能と安全制約（静的スキャン含む）を自動検証できること。

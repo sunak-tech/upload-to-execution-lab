@@ -1,230 +1,179 @@
-# Lab 01: File Upload to Code Execution & Defense in Depth on PHP + Apache
+# Lab 01: File Upload Defense & Defense in Depth on PHP + Apache
 
-**[📂 Lab Index (README.md)](./README.md)** | **[🇯🇵 日本語 (README.ja.md)](./README.ja.md)** | **[🏠 Root Guide (../../README.en.md)](../../README.en.md)** | **[🛡️ Safety Policy (../../docs/safety.en.md)](../../docs/safety.en.md)**
-
----
+[日本語](./README.md) | [Root Guide](../../README.en.md) | [Safety Policy](../../SAFETY.en.md) | [Roadmap](../../docs/roadmap.en.md)
 
 > [!CAUTION]
-> **FOR LOCAL EDUCATIONAL USE ONLY — DO NOT DEPLOY PUBLICLY**
->
-> Stage 1 (`127.0.0.1:8081`) and Stage 2 (`127.0.0.1:8082`) intentionally reproduce file upload vulnerabilities that lead to server-side code execution. Run them strictly on your personal local machine (`127.0.0.1` loopback binding over an `internal: true` isolated Docker network) and never expose them to public servers or shared networks.
-
----
+> Stage 1 (`8081`) and Stage 2 (`8082`) are intentionally vulnerable environments strictly for local study. Never expose them on public servers or shared networks; follow [SAFETY.en.md](../../SAFETY.en.md).
 
 ## 1. Learning Objectives
 
-By completing Lab 01, you will be able to explain and apply four core security engineering concepts:
-
-1. **Tracing the End-to-End Attack Chain (`Upload -> Store -> Serve -> Execute`)**: Understand that server-side code execution is never caused by upload ingestion alone—it requires an unbroken chain across validation (Upload), filesystem placement and naming (Store), URL routing (Serve), and Web server interpreter mapping (Execute).
-2. **Trust Boundaries & Untrusted Client Metadata**: Explain why filenames, extensions, and client-supplied HTTP `Content-Type` headers lie outside the server trust boundary and can be trivially forged.
-3. **Why Application-Only Blacklists Fail (Parser & Handler Mismatches)**: Demonstrate why blocking `.php` in PHP application code still allows code execution when Apache's handler configuration (`FilesMatch`) also executes `.phtml`.
-4. **Designing Application + Infrastructure Defense in Depth**: Combine independent controls across the Application Layer (strict allowlist, server-side `finfo` + `getimagesize()`, 2MB cap, UUIDv4 renaming, outside-webroot storage, and hardened delivery via `/image.php`) and Infrastructure Layer (`AllowOverride None`, PHP engine disabled on `/uploads`, and `Require all denied`) so no single misconfiguration leads to RCE.
-
----
+1. **Structure the Attack Chain**: Explain why server-side code execution requires all four phases (`Upload -> Store -> Serve -> Execute`) to align.
+2. **Distrust Client Metadata**: Explain why filenames, extensions, and client-supplied `Content-Type` headers are trivially spoofed untrusted inputs.
+3. **Spot Denylist Gaps**: Explain why blocking `.php` in application code still fails when Apache maps `.phtml` to the PHP interpreter.
+4. **Build Defense in Depth**: Combine Application controls (allowlist, server-side content checks, `UUIDv4` rename, outside-webroot isolation, controlled delivery) with Infrastructure controls (`AllowOverride None`, PHP engine off, direct access denied) to eliminate single points of failure.
 
 ## 2. Quickstart & Automated Verification
-
-### 2.1 Start the Lab & Open in Browser
-
-From `labs/01-php-upload-defense/`, build and start the three stages in detached mode (runs 100% offline once built):
 
 ```bash
 cd labs/01-php-upload-defense
 docker compose up --build -d
 ```
 
-All stages run Apache + PHP 8.3 as non-root user `www-data` on internal port `8080`, bound strictly to `127.0.0.1` on the host:
+All stages run Apache + PHP 8.3 (internal port `8080`, non-root user `www-data`, `internal: true` isolated network) bound strictly to `127.0.0.1`:
 
-| Stage | Local URL | UI Language Toggle | State Reset |
+| Stage | Local URL | Language Toggle | State Reset |
 | :--- | :--- | :--- | :--- |
-| **Stage 1: Vulnerable** | `http://127.0.0.1:8081` | `?lang=ja` / `?lang=en` | UI Reset button (`POST /reset.php`) |
-| **Stage 2: App-Only Insufficient Defense** | `http://127.0.0.1:8082` | `?lang=ja` / `?lang=en` | UI Reset button (`POST /reset.php`) |
-| **Stage 3: Defense in Depth** | `http://127.0.0.1:8083` | `?lang=ja` / `?lang=en` | UI Reset button (`POST /reset.php`) |
+| **Stage 1** | `http://127.0.0.1:8081` | `?lang=ja` / `?lang=en` | UI Reset button (`POST /reset.php`) |
+| **Stage 2** | `http://127.0.0.1:8082` | `?lang=ja` / `?lang=en` | UI Reset button (`POST /reset.php`) |
+| **Stage 3** | `http://127.0.0.1:8083` | `?lang=ja` / `?lang=en` | UI Reset button (`POST /reset.php`) |
 
-### 2.2 Included Harmless Sample Files (`samples/`)
+### Sample Payloads ([`samples/README.en.md`](./samples/README.en.md))
 
-See [`samples/README.md`](./samples/README.md) for full details. Every marker script is completely harmless: zero user input handling and zero OS command execution functions.
+All marker scripts output fixed strings and read-only runtime info only—zero user input reading and zero OS command execution functions.
 
-| File Path | Purpose | Expected Behavior Across Stages |
+| File | Purpose | Outcome Across Stages |
 | :--- | :--- | :--- |
-| [`samples/sample-valid.png`](./samples/sample-valid.png) | Valid baseline PNG image | Accepted and displayed cleanly in Stage 1, Stage 2, and Stage 3 |
-| [`samples/marker-basic.php`](./samples/marker-basic.php) | `.php` execution marker | Executes in Stage 1 (`LAB_EXECUTION_MARKER_STAGE1`); blocked (`HTTP 400`) in Stage 2 and Stage 3 |
-| [`samples/marker-bypass.phtml`](./samples/marker-bypass.phtml) | `.phtml` blacklist-bypass marker | Bypasses `.php` check and executes in Stage 2 (`LAB_EXECUTION_MARKER_STAGE2`); blocked (`HTTP 400`) in Stage 3 |
+| [`samples/sample-valid.png`](./samples/sample-valid.png) | Valid PNG image | Accepted and displayed in Stages 1, 2, and 3 |
+| [`samples/marker-basic.php`](./samples/marker-basic.php) | `.php` execution marker | Executes in Stage 1 (`LAB_EXECUTION_MARKER_STAGE1`); blocked (`HTTP 400`) in Stages 2 & 3 |
+| [`samples/marker-bypass.phtml`](./samples/marker-bypass.phtml) | `.phtml` bypass marker | Bypasses filter and executes in Stage 2 (`LAB_EXECUTION_MARKER_STAGE2`); blocked (`HTTP 400`) in Stage 3 |
 
-### 2.3 Run Automated Verification & Teardown
-
-Run the built-in `verifier` service on `lab_net` to verify all stages, headers, resets, and static safety checks (see [`tests/README.md`](./tests/README.md)):
+### Automated Verification & Teardown ([`tests/README.en.md`](./tests/README.en.md))
 
 ```bash
-# End-to-end automated verification via Docker Compose test profile
+# Verify stage behaviors, security headers, and static safety rules
 docker compose --profile test run --rm verifier
 
-# (Optional) Host-side smoke test on Windows PowerShell
-pwsh -File tests/host-smoke.ps1
-
-# (Optional) Host-side smoke test on macOS / Linux
-sh tests/host-smoke.sh
-
-# Stop and remove containers when done
+# Stop and remove containers
 docker compose down
 ```
 
----
+## 3. Data Flow Diagrams & Trust Boundary Analysis
 
-## 3. Architecture, Data Flow Diagrams (DFDs) & Trust Boundaries
+### 3.1 Stage 1 (`127.0.0.1:8081`): Unvalidated Webroot Upload
 
-Every file upload feature processes untrusted bytes across four distinct phases:
-
-- **Upload (Ingest & Validate)**: Receive multipart form data (filename, client `Content-Type`, raw bytes) across the client-to-server trust boundary.
-- **Store (Persist & Place)**: Write the bytes to a filesystem directory under a chosen filename.
-- **Serve (Route & Deliver)**: Map an incoming `GET` URL to either a static path or a controlled delivery script.
-- **Execute (Interpret)**: Decide whether the target file is returned as inert data bytes or passed to a server-side interpreter (`mod_php`).
-
-The Data Flow Diagrams below illustrate how each stage handles these four phases.
-
----
-
-### 3.1 Stage 1: Vulnerable (`http://127.0.0.1:8081`) — Unvalidated Webroot Upload
-
-Stage 1 performs zero extension or content validation. Aside from stripping directory components with `basename()`, it preserves the user-supplied filename and writes directly into `/var/www/html/uploads/{name}` inside Apache's `DocumentRoot`.
+Stage 1 performs no extension or content checks, applying only `basename()` before writing directly into `/var/www/html/uploads/{name}` inside `DocumentRoot`.
 
 ```mermaid
 flowchart LR
-    subgraph ClientZone["Untrusted Zone: Host Browser (127.0.0.1)"]
-        U1["User / Attacker Browser"]
+    subgraph Client1["Untrusted Zone: Browser (127.0.0.1)"]
+        U1["User / Attacker"]
     end
 
-    subgraph ContainerS1["Trust Boundary: stage1-vulnerable (Apache + PHP 8.3 as www-data)"]
-        UP1["1. Upload: POST /upload.php (No extension or MIME check)"]
-        ST1["2. Store: /var/www/html/uploads/{name} (Inside DocumentRoot)"]
+    subgraph Server1["Trust Boundary: stage1-vulnerable (Apache + PHP 8.3 / www-data)"]
+        UP1["1. Upload: POST /upload.php (Unvalidated)"]
+        ST1["2. Store: /var/www/html/uploads/{name} (In DocumentRoot)"]
         SV1["3. Serve: GET /uploads/marker-basic.php"]
-        EX1["4. Execute: Apache mod_php runs .php -> LAB_EXECUTION_MARKER_STAGE1"]
+        EX1["4. Execute: Apache runs PHP -> LAB_EXECUTION_MARKER_STAGE1"]
     end
 
-    U1 -->|"1. Multipart upload (marker-basic.php)"| UP1
-    UP1 -->|"move_uploaded_file with original extension"| ST1
-    U1 -->|"2. Direct HTTP request"| SV1
-    ST1 -->|"File directly reachable via URL"| SV1
-    SV1 -->|"Matches Apache PHP handler"| EX1
-    EX1 -->|"Server-side PHP output"| U1
+    U1 -->|"Upload marker-basic.php"| UP1
+    UP1 -->|"Keep original .php extension"| ST1
+    U1 -->|"Direct URL request"| SV1
+    ST1 -->|"Publicly routable path"| SV1
+    SV1 -->|"Routed to PHP handler"| EX1
+    EX1 -->|"Executed output"| U1
 ```
 
-**Why Stage 1 Fails (Broken Assumptions):**
-- Untrusted input simultaneously satisfies all **three preconditions for upload-driven RCE**:
-  1. Stored with an **attacker-controlled extension** (`.php`).
-  2. Placed **inside `DocumentRoot`** (`/var/www/html/uploads/`), making it directly addressable by URL.
-  3. Served from a directory where **Apache's PHP interpreter handler is active**, turning uploaded data into executed code.
+**Why Stage 1 Executes**:
+- Saved on disk with an attacker-controlled `.php` extension.
+- Stored inside `DocumentRoot`, making it directly reachable by URL.
+- Served from a directory where Apache's PHP handler is active, turning uploaded data into executed code.
 
----
+### 3.2 Stage 2 (`127.0.0.1:8082`): Naive App Denylist vs. Handler Mismatch
 
-### 3.2 Stage 2: App-Only Insufficient Defense (`http://127.0.0.1:8082`) — Naive Blacklist vs. Server Handler Mismatch
-
-In Stage 2, the developer attempts a quick fix in PHP by rejecting the `.php` extension (`HTTP 400`). However, uploaded files are still saved under `/var/www/html/uploads/{name}`, while Apache's configuration maps `<FilesMatch "\.(php|phtml)$">` to the PHP interpreter.
+Stage 2 rejects `.php` in PHP code (`HTTP 400`), yet still stores files in `/var/www/html/uploads/{name}` while Apache maps both `.php` and `.phtml` to PHP.
 
 ```mermaid
 flowchart LR
-    subgraph ClientZone2["Untrusted Zone: Host Browser or HTTP Client (127.0.0.1)"]
-        U2["User / Attacker Browser"]
+    subgraph Client2["Untrusted Zone: Browser / HTTP Client (127.0.0.1)"]
+        U2["User / Attacker"]
     end
 
-    subgraph ContainerS2["Trust Boundary: stage2-app-only (Apache + PHP 8.3 as www-data)"]
-        subgraph AppLayer2["Application Layer (upload.php)"]
-            BL2["1. Upload Check: Naive Blacklist (Rejects only .php -> HTTP 400)"]
+    subgraph Server2["Trust Boundary: stage2-app-only (Apache + PHP 8.3 / www-data)"]
+        subgraph App2["Application Layer (upload.php)"]
+            BL2["1. Check: Rejects .php only (HTTP 400)"]
         end
-        subgraph InfraLayer2["Webroot & Apache Handler Layer"]
+        subgraph Infra2["Webroot & Apache Handler Layer"]
             ST2["2. Store: /var/www/html/uploads/marker-bypass.phtml"]
             SV2["3. Serve: GET /uploads/marker-bypass.phtml"]
-            EX2["4. Execute: Apache FilesMatch (.php or .phtml) -> LAB_EXECUTION_MARKER_STAGE2"]
+            EX2["4. Execute: Apache runs .phtml -> LAB_EXECUTION_MARKER_STAGE2"]
         end
     end
 
     U2 -->|"marker-basic.php -> Blocked (HTTP 400)"| BL2
-    U2 -->|"marker-bypass.phtml -> Passes check!"| BL2
-    BL2 -->|"Saved inside DocumentRoot"| ST2
-    U2 -->|"Direct GET request"| SV2
+    U2 -->|"marker-bypass.phtml -> Passes check"| BL2
+    BL2 -->|"Saved in DocumentRoot"| ST2
+    U2 -->|"Direct URL request"| SV2
     ST2 -->|"Exposed under /uploads/"| SV2
-    SV2 -->|"Apache maps .phtml to PHP"| EX2
-    EX2 -->|"Server-side PHP output"| U2
+    SV2 -->|".phtml mapped to PHP"| EX2
+    EX2 -->|"Executed output"| U2
 ```
 
-**Why Stage 2 Fails:**
-1. **Security Policy Mismatch Between App Code and Web Server**: The PHP validation code assumes only `.php` is executable, whereas Apache executes both `.php` and `.phtml`. Blacklists fail structurally because the application must anticipate every handler extension (`.phtml`, `.php5`, `.phar`), case variation, or per-directory configuration override (`.htaccess`) supported by the underlying Web server.
-2. **Why Client `Content-Type` Headers Cannot Be Trusted**: Even if an application checks `$_FILES['file']['type'] === 'image/png'`, that header comes directly from the untrusted client request. An attacker can spoof it in one command—e.g., `curl -F "file=@samples/marker-bypass.phtml;type=image/png"`—so client-declared MIME types provide zero security assurance (covered in the Hands-On Guide's optional `curl` lab).
+**Why Stage 2 Fails**:
+- **App vs. Server Handler Mismatch**: The PHP filter assumes only `.php` executes, whereas Apache's `<FilesMatch "\.(php|phtml)$">` also executes `.phtml`. Denylists fail whenever any server-handled extension or `.htaccess` override is missed.
+- **Untrusted Client `Content-Type`**: Checking the request's `Content-Type: image/png` header adds no security because any client (`curl`) can spoof it in a single command.
 
----
+### 3.3 Stage 3 (`127.0.0.1:8083`): App + Infra Defense in Depth
 
-### 3.3 Stage 3: Defense in Depth (`http://127.0.0.1:8083`) — Coordinated Application + Infrastructure Controls
-
-Stage 3 places **independent security controls at every phase** of `Upload -> Store -> Serve -> Execute`. Furthermore, even if an application bug or operational mistake ever wrote a `.phtml` file into `/var/www/html/uploads/` (simulated by the pre-seeded fixture `infra-guard-check.phtml`), Apache's infrastructure hardening independently blocks access and disables PHP execution.
+Stage 3 places independent controls across all four phases and locks down `/var/www/html/uploads/` at the Apache layer (verified via the pre-seeded probe `infra-guard-check.phtml`).
 
 ```mermaid
 flowchart TD
-    subgraph ClientZone3["Untrusted Zone: Host Browser / HTTP Client (127.0.0.1)"]
+    subgraph Client3["Untrusted Zone: Browser / HTTP Client (127.0.0.1)"]
         U3["User / Attacker"]
     end
 
-    subgraph ContainerS3["Trust Boundary: stage3-defense-in-depth (Apache + PHP 8.3 as www-data)"]
-        subgraph AppLayer3["Application Layer Controls"]
-            V3["1. Upload (upload.php): Allowlist (.png/.jpg/.jpeg/.gif) + 2MB limit + finfo MIME + getimagesize()"]
-            R3["2. Rename & Isolate: Server-generated UUIDv4 ({uuid}.{ext})"]
-            DL3["3. Safe Delivery (image.php): Strict UUID regex + nosniff + CSP default-src none + X-Frame-Options DENY"]
+    subgraph Server3["Trust Boundary: stage3-defense-in-depth (Apache + PHP 8.3 / www-data)"]
+        subgraph App3["Application Controls"]
+            V3["1. Validate (upload.php): 4-ext allowlist + 2MB cap + finfo + getimagesize()"]
+            R3["2. Sanitize Name: Server UUIDv4 ({uuid}.{ext})"]
+            DL3["3. Safe Delivery (image.php): UUID regex + nosniff + CSP + X-Frame-Options"]
         end
 
-        subgraph StorageZone3["Isolated Storage (Outside DocumentRoot)"]
-            ISO3["/var/lab-storage/uploads/{uuid}.{ext} (Not directly URL-routable)"]
+        subgraph Store3["Isolated Storage (Outside DocumentRoot)"]
+            ISO3["/var/lab-storage/uploads/{uuid}.{ext} (No direct URL)"]
         end
 
-        subgraph InfraLayer3["Infrastructure Layer Controls (Apache Hardening)"]
-            IG3["/var/www/html/uploads/infra-guard-check.phtml (AllowOverride None + PHP engine off + Require all denied)"]
+        subgraph Infra3["Infrastructure Controls (Apache Config)"]
+            IG3["/var/www/html/uploads/infra-guard-check.phtml (AllowOverride None + PHP off + Denied)"]
         end
     end
 
-    U3 -->|"POST /upload.php (marker / polyglot -> HTTP 400)"| V3
-    U3 -->|"POST /upload.php (sample-valid.png -> Valid)"| V3
-    V3 -->|"Strips client filename"| R3
-    R3 -->|"Writes outside webroot"| ISO3
+    U3 -->|"Script / spoofed PNG -> Blocked (HTTP 400)"| V3
+    U3 -->|"sample-valid.png -> Valid"| V3
+    V3 -->|"Discard client filename"| R3
+    R3 -->|"Write outside webroot"| ISO3
     U3 -->|"GET /image.php?file={uuid}.png"| DL3
-    ISO3 -->|"Read as raw bytes via readfile()"| DL3
-    DL3 -->|"200 OK (Safe image bytes + security headers)"| U3
+    ISO3 -->|"Stream raw bytes via readfile()"| DL3
+    DL3 -->|"200 OK (Image bytes + security headers)"| U3
     U3 -->|"GET /uploads/infra-guard-check.phtml"| IG3
-    IG3 -->|"HTTP 403 Forbidden (PHP never executes)"| U3
+    IG3 -->|"HTTP 403 Forbidden (PHP never runs)"| U3
 ```
 
-**Why Stage 3 Succeeds (Eliminating Single Points of Failure):**
-- **Layer 1 (Upload — Strict Allowlist & Content Inspection)**: Enforces a strict extension allowlist (`png`, `jpg`, `jpeg`, `gif`), a 2MB size limit, server-side magic-byte inspection via `finfo(FILEINFO_MIME_TYPE)`, and structural image header validation via `getimagesize()`. Disguised PHP scripts renamed to `evil.png` with `Content-Type: image/png` are rejected (`HTTP 400`).
-- **Layer 2 (Store — UUIDv4 Renaming & Outside-Webroot Isolation)**: Discards the original filename completely, assigns a random `UUIDv4.<ext>`, and stores the file in `/var/lab-storage/uploads/` **outside** Apache's `DocumentRoot` (`/var/www/html`). Uploaded files have no direct URL route.
-- **Layer 3 (Serve — Controlled Delivery Endpoint & Hardened Headers)**: Serves images exclusively via `GET /image.php?file=<uuid>.<ext>` after validating a strict UUIDv4 + allowlisted-extension regular expression. Streams raw bytes with `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`, and `X-Frame-Options: DENY` to prevent browser MIME sniffing or active content execution.
-- **Layer 4 (Execute / Infra — Independent Apache Hardening)**: Sets `AllowOverride None` (ignoring any `.htaccess` files) and locks down `/var/www/html/uploads/` with PHP execution disabled, `Options -ExecCGI -Indexes`, and `Require all denied`. Requesting the pre-seeded probe `GET /uploads/infra-guard-check.phtml` returns **HTTP 403 Forbidden** and never executes PHP.
+**How Stage 3 Breaks the Chain**:
+- **Upload Validation**: Enforces a 4-extension allowlist (`png`, `jpg`, `jpeg`, `gif`), 2MB cap, `finfo(FILEINFO_MIME_TYPE)` magic-byte inspection, and `getimagesize()` structural checks.
+- **Outside-Webroot Storage & Renaming**: Replaces client filenames with random `UUIDv4.<ext>` names and stores files in `/var/lab-storage/uploads/` outside `DocumentRoot`, removing direct URL routing.
+- **Controlled Delivery**: Streams bytes via `/image.php?file=<uuid>.<ext>` after strict UUID regex validation, attaching `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`, and `X-Frame-Options: DENY`.
+- **Independent Apache Hardening**: Enforces `AllowOverride None`, disables PHP execution and CGI/Indexes, and sets `Require all denied` on `/var/www/html/uploads/` so `GET /uploads/infra-guard-check.phtml` returns `HTTP 403` without executing PHP.
 
----
+## 4. Threat-to-Mitigation Matrix
 
-## 4. Threat-to-Mitigation Defense-in-Depth Matrix
-
-| Phase | Threat / Attack Vector | Stage 1 (Vulnerable) | Stage 2 (App-Only) | Stage 3: Application Controls | Stage 3: Infrastructure Controls |
+| Phase | Threat Vector | Stage 1 | Stage 2 | Stage 3: App Layer | Stage 3: Infra Layer |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Upload** | Direct `.php` script upload (`marker-basic.php`) | ❌ Accepted & executed | ⚠️ Blocked by `.php` blacklist (`HTTP 400`) | ✅ Blocked by image extension allowlist (`HTTP 400`) | ✅ Even if placed in `/uploads`, PHP engine is off & denied |
-| **Upload** | Alternate executable extension (`marker-bypass.phtml`) | ❌ Accepted & executed | ❌ **Bypassed & executed** | ✅ Blocked by strict allowlist (`HTTP 400`) | ✅ PHP engine disabled on `/uploads` + `HTTP 403` |
-| **Upload** | Spoofed `Content-Type: image/png` or PHP disguised as `evil.png` | ❌ Accepted | ❌ Accepted if non-`.php` extension | ✅ Ignores client header; `finfo` + `getimagesize()` reject (`HTTP 400`) | ✅ Never routed through PHP interpreter |
-| **Upload** | Oversized file upload resource exhaustion | ❌ No app cap | ❌ No app cap | ✅ Enforces 2MB maximum size | ✅ Contained within isolated non-root container |
-| **Store** | Attacker-controlled filename / path traversal tricks | ⚠️ `basename()` only (keeps client name) | ⚠️ `basename()` only (keeps client name) | ✅ Discards client name; generates random `UUIDv4.<ext>` | ✅ Runs as `www-data`; app code & config are read-only |
-| **Store** | `.htaccess` upload to override Apache handlers | ❌ Can write inside webroot | ❌ Allowed (not `.php`) | ✅ Rejected by allowlist + stored outside webroot (`/var/lab-storage/uploads/`) | ✅ `AllowOverride None` ignores `.htaccess` server-wide |
-| **Serve** | Direct URL navigation to uploaded file | ❌ Reachable at `/uploads/<name>` | ❌ Reachable at `/uploads/<name>` | ✅ Not in webroot; served only via `/image.php?file=<uuid>.<ext>` | ✅ `/var/www/html/uploads` enforces `Require all denied` (`HTTP 403`) |
-| **Serve** | Browser MIME-type sniffing or embedded active content | ❌ No defensive headers | ❌ No defensive headers | ✅ Sends `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`, `X-Frame-Options: DENY` | ✅ Hardened server delivery defaults |
-| **Execute** | Server-side PHP interpreter execution of uploaded bytes | ❌ Executed by `mod_php` | ❌ `.phtml` executed by `mod_php` | ✅ Streamed solely as raw bytes via `readfile()` | ✅ PHP engine disabled & `-ExecCGI` on `/uploads` |
+| **Upload** | Direct `.php` upload (`marker-basic.php`) | Executes | Blocked (400) | Blocked by allowlist (400) | PHP off & access denied |
+| **Upload** | Alternate extension (`marker-bypass.phtml`) | Executes | Bypassed & Executes | Blocked by allowlist (400) | PHP off & denied (403) |
+| **Upload** | Spoofed `Content-Type` or PHP disguised as `.png` | Accepted | Accepted if non-`.php` | Rejected by `finfo` + `getimagesize()` (400) | Not routed to PHP |
+| **Upload** | Oversized upload resource exhaustion | Uncapped | Uncapped | Blocked above 2MB (400) | Contained in non-root container |
+| **Store** | Attacker-chosen filename / path traversal | `basename()` only | `basename()` only | Forced `UUIDv4.<ext>` rename | Minimal `www-data` write perms |
+| **Store** | `.htaccess` handler override upload | Writable in webroot | Allowed (not `.php`) | Allowlist block + outside webroot | Ignored via `AllowOverride None` |
+| **Serve** | Direct URL navigation to stored upload | Reachable at `/uploads/<name>` | Reachable at `/uploads/<name>` | Outside webroot; `/image.php` only | `/uploads` returns `HTTP 403` |
+| **Serve** | Browser MIME sniffing / embedded script execution | No security headers | No security headers | `nosniff` + `CSP: default-src 'none'` + `DENY` | Hardened header defaults |
+| **Execute** | Server-side PHP execution of uploaded file | Executed by `mod_php` | `.phtml` executed | Streamed as raw bytes (`readfile()`) | PHP engine disabled & `-ExecCGI` |
 
----
+## 5. Companion Materials
 
-## 5. Workshop Materials & Next Steps
-
-Explore the companion materials in `docs/en/` for self-study, team workshops, or conference talks:
-
-- **📘 Hands-On Workshop Guide (60–90 min study group pacing + optional `curl` spoofing lab)**:
-  - [docs/en/hands-on-guide.md](./docs/en/hands-on-guide.md)
-- **📝 Participant Threat Modeling Worksheet (with collapsible facilitator answer key)**:
-  - [docs/en/worksheet.md](./docs/en/worksheet.md)
-- **🎤 Lightning Talk Live Demo Script (5-min & 10-min scripts)**:
-  - [docs/en/lt-script.md](./docs/en/lt-script.md)
-- **🧪 Samples & Verification Suite Documentation**:
-  - [samples/README.md](./samples/README.md) | [tests/README.md](./tests/README.md)
-- **🗺️ Future Advanced Threat Modeling Labs (Nginx + PHP-FPM, Polyglots, Presigned URLs)**:
-  - [Multi-Lab Expansion Roadmap (../../docs/roadmap.en.md)](../../docs/roadmap.en.md)
+- **Hands-On Workshop Guide (60–90 min + `curl` spoofing appendix)**: [docs/en/hands-on-guide.md](./docs/en/hands-on-guide.md)
+- **Participant Threat Modeling Worksheet (with answer key)**: [docs/en/worksheet.md](./docs/en/worksheet.md)
+- **Lightning Talk Demo Script (5-min & 10-min)**: [docs/en/lt-script.md](./docs/en/lt-script.md)
+- **Samples & Automated Verifier Reference**: [samples/README.en.md](./samples/README.en.md) | [tests/README.en.md](./tests/README.en.md)
+- **Future Multi-Lab Candidates**: [../../docs/roadmap.en.md](../../docs/roadmap.en.md)

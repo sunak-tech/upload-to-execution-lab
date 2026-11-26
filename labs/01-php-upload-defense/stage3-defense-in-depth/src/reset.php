@@ -13,7 +13,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         $lang,
         $isEn ? 'Method Not Allowed' : '許可されていないメソッド',
         '<div class="alert alert-err">'
-        . esc($isEn ? 'Use POST /reset.php to reset uploads.' : 'リセットには POST /reset.php を使用してください。')
+        . esc($isEn ? 'Use POST /reset.php to reset uploads.' : 'POST /reset.php から実行してください。')
         . '</div>'
     );
     exit;
@@ -39,8 +39,8 @@ if (is_dir(STORAGE_DIR)) {
 
 http_response_code(200);
 $msg = $isEn
-    ? sprintf('Reset completed: removed %d stored image(s) from Stage 3 (/uploads/infra-guard-check.phtml preserved).', $deleted)
-    : sprintf('リセット完了: Stage 3 から %d 件の保存済み画像を削除しました（/uploads/infra-guard-check.phtml は保持）。', $deleted);
+    ? sprintf('Reset complete: deleted %d image(s) (/uploads/infra-guard-check.phtml preserved).', $deleted)
+    : sprintf('リセット完了: %d 件の画像を削除しました（/uploads/infra-guard-check.phtml は保持）。', $deleted);
 
 $flash = '<div class="alert alert-ok">' . esc($msg) . '</div>'
     . '<script>if (window.history && window.history.replaceState) { window.history.replaceState(null, "", "/?lang=' . esc($lang) . '"); }</script>';

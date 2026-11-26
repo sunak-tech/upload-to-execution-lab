@@ -1,149 +1,97 @@
-# Upload-to-Execution Lab — Comprehensive Guide (English)
+# Upload-to-Execution Lab
 
-**[🏠 Top (README.md)](./README.md)** | **[🇯🇵 日本語 (README.ja.md)](./README.ja.md)** | **[🛡️ Safety Policy (docs/safety.en.md)](./docs/safety.en.md)** | **[🗺️ Roadmap (docs/roadmap.en.md)](./docs/roadmap.en.md)**
-
----
+[日本語](./README.md) | [Safety Policy](./SAFETY.en.md) | [Roadmap](./docs/roadmap.en.md)
 
 > [!CAUTION]
-> **FOR LOCAL EDUCATIONAL USE ONLY — DO NOT DEPLOY PUBLICLY**
->
-> This repository contains **intentionally vulnerable Web applications (Stage 1 & Stage 2)** designed to demonstrate how file upload flaws lead to server-side code execution. Run these containers **strictly on your personal local machine** bound to `127.0.0.1` over an isolated internal Docker network. Never deploy this repository to public cloud instances, VPS hosts, shared corporate networks, or expose it via port forwarding / tunneling tools (such as ngrok). Read the [Safety Policy (docs/safety.en.md)](./docs/safety.en.md) before starting.
+> This repository contains intentionally vulnerable applications strictly for local security education. Never deploy it to public servers or shared networks; read [SAFETY.en.md](./SAFETY.en.md) before use.
 
----
+## Purpose
 
-## 1. Purpose of This Project
+A hands-on threat modeling lab demonstrating how file upload features lead to server-side code execution (`Upload -> Store -> Serve -> Execute`) and how Defense in Depth stops the chain.
 
-File upload features—such as profile avatars and document attachments—are ubiquitous in modern Web applications. Yet because they **accept arbitrary client-supplied bytes and filenames, persist them on server storage, and subsequently serve them back over HTTP**, a single broken trust assumption can turn an ordinary upload form into full server-side code execution (Remote Code Execution: RCE).
+- **Trace the Attack Chain**: Map how untrusted uploads cross trust boundaries and get interpreted as executable code by the Web server.
+- **See Why Single-Layer Filters Fail**: Observe how a naive `.php` denylist in application code is bypassed when Apache also maps `.phtml` to PHP.
+- **Apply App + Infra Defense in Depth**: Combine strict allowlisting, content inspection, and outside-webroot isolation with Apache execution disabling and direct-access denial.
 
-**Upload-to-Execution Lab** is not a puzzle-style CTF; it is a structured, local-only hands-on lab built to teach **Threat Modeling and Defense-in-Depth Architecture**:
+## Target Audience
 
-1. **Structuring the Attack Chain (`Upload -> Store -> Serve -> Execute`)**: Visualize which trust boundaries an uploaded file crosses and how downstream server components end up interpreting untrusted data as executable code.
-2. **Why Application-Only Defenses Fail (Parser & Handler Mismatches)**: Experience firsthand why blocking `.php` in application code still fails when the underlying Web server (Apache) maps additional extensions like `.phtml` to the PHP interpreter.
-3. **Defense in Depth Across Application & Infrastructure Layers**: Combine strict extension allowlisting, server-side content verification, UUIDv4 renaming, outside-webroot storage, and hardened delivery headers (Application Layer) with disabled script execution, `AllowOverride None`, and direct-access denial (Infrastructure Layer) so no single control is a single point of failure.
+- Web and infrastructure engineers examining security boundaries between application code and server handlers
+- Study group facilitators running 60–90 minute offline-capable hands-on workshops
+- Lightning Talk speakers delivering a 5–10 minute live demo of upload exploitation and mitigation
+- Learners practicing Data Flow Diagram threat modeling using structured worksheets
 
----
-
-## 2. Target Audience & Use Cases
-
-- **Web Application Developers & Infrastructure / SRE Engineers**: Understand the security contract between application validation logic and Web server handler configurations.
-- **Security Study Group Organizers & Trainers**: Run a self-contained, 60–90 minute hands-on workshop (100% completable in a browser, with optional `curl` spoofing exercises) that works offline.
-- **Lightning Talk (LT) Speakers**: Deliver a crisp 5–10 minute live demo showing *vulnerable execution -> naive blacklist bypass -> multi-layer defense* with one-click UI state resets.
-- **Threat Modeling Practitioners & Students**: Practice deriving concrete security controls from Data Flow Diagrams (DFDs) and Trust Boundaries using the guided worksheet.
-
----
-
-## 3. Repository Structure
-
-The repository uses a multi-lab layout under `labs/` so future labs covering different stacks and threat patterns can be added cleanly alongside Lab 01.
+## Repository Structure
 
 ```text
 upload-to-execution-lab/
-├── README.md                              # Bilingual landing page (JP / EN)
-├── README.ja.md                           # Full root guide (Japanese)
-├── README.en.md                           # Full root guide (English - this file)
-├── SAFETY.md                              # Bilingual safety rules entrypoint
+├── README.md                              # Root guide in Japanese (README.en.md: English)
+├── SAFETY.md                              # Safety policy in Japanese (SAFETY.en.md: English)
 ├── LICENSE                                # MIT License
 ├── docs/
-│   ├── safety.ja.md                       # Detailed local-only safety policy (Japanese)
-│   ├── safety.en.md                       # Detailed local-only safety policy (English)
-│   ├── roadmap.ja.md                      # Multi-lab expansion guide & roadmap (Japanese)
-│   └── roadmap.en.md                      # Multi-lab expansion guide & roadmap (English)
+│   └── roadmap.md                         # Lab roadmap in Japanese (roadmap.en.md: English)
 └── labs/
-    └── 01-php-upload-defense/             # Lab 01: PHP + Apache File Upload Defense Lab
-        ├── README.md                      # Lab 01 bilingual index
-        ├── README.ja.md                   # Lab 01 architecture, DFDs & threat matrix (Japanese)
-        ├── README.en.md                   # Lab 01 architecture, DFDs & threat matrix (English)
-        ├── compose.yaml                   # 3 stages + verifier definition (127.0.0.1 only / internal net)
-        ├── stage1-vulnerable/             # Stage 1 (Port 8081): Unvalidated webroot upload
-        ├── stage2-app-only/               # Stage 2 (Port 8082): Naive app-only .php blacklist
-        ├── stage3-defense-in-depth/       # Stage 3 (Port 8083): Hardened App + Infra defense in depth
-        ├── samples/                       # Harmless test samples (valid PNG + fixed-marker PHP/PHTML)
-        ├── tests/                         # Automated E2E verification (verify.php / host-smoke.ps1 / .sh)
+    └── 01-php-upload-defense/
+        ├── README.md                      # Architecture & DFDs in Japanese (README.en.md: English)
+        ├── compose.yaml                   # 3 stages + verifier container definition
+        ├── stage1-vulnerable/             # Stage 1 (8081): Unvalidated upload
+        ├── stage2-app-only/               # Stage 2 (8082): Naive app-only denylist
+        ├── stage3-defense-in-depth/       # Stage 3 (8083): App + Infra defense in depth
+        ├── samples/                       # Harmless verification sample files
+        ├── tests/                         # Automated E2E verification (verify.php)
         └── docs/
             ├── ja/                        # Japanese workshop guide, worksheet & LT script
             └── en/                        # English workshop guide, worksheet & LT script
 ```
 
----
-
-## 4. System Requirements
+## System Requirements
 
 | Item | Requirement |
 | :--- | :--- |
 | **Container Runtime** | Docker Desktop or Docker Engine with `docker compose` v2 |
-| **Supported OS & CPU** | Windows 11/10 (WSL2 backend recommended), macOS (Intel `amd64` & Apple Silicon `arm64`), Linux (`amd64` / `arm64`) |
-| **Available Local Ports** | `127.0.0.1:8081`, `127.0.0.1:8082`, and `127.0.0.1:8083` free on localhost |
-| **Web Browser** | Any modern browser (Chrome, Edge, Firefox, Safari). Core exercises require only a browser |
-| **Network Connectivity** | Internet access is required **only once** during the initial `docker compose up --build -d` to pull `php:8.3-apache`. **After building, the entire lab runs 100% offline** (zero external CDNs, fonts, or scripts) |
+| **Supported OS** | Windows 11/10 (WSL2 recommended), macOS (Intel & Apple Silicon), Linux |
+| **Local Ports** | `127.0.0.1:8081`, `127.0.0.1:8082`, `127.0.0.1:8083` free on localhost |
+| **Connectivity** | Internet needed only once during initial build; runs 100% offline afterward |
 
----
-
-## 5. Quickstart (Running, Verifying & Stopping Lab 01)
-
-### Step 1: Build and Start the Containers
+## Quickstart (Lab 01)
 
 ```bash
 cd labs/01-php-upload-defense
 docker compose up --build -d
 ```
 
-### Step 2: Open the 3 Stages in Your Browser
+All stages bind strictly to localhost (`?lang=ja` / `?lang=en` toggle and one-click Reset included):
 
-Every stage supports UI language switching via `?lang=ja` / `?lang=en` and includes a **Reset button** (`POST /reset.php`) to wipe uploaded files cleanly between runs.
-
-| Stage | Local URL | Behavior Summary |
+| Stage | Local URL | Key Behavior |
 | :--- | :--- | :--- |
-| **Stage 1: Vulnerable** | `http://127.0.0.1:8081/?lang=en` | Zero extension or content validation. Saves directly to `/var/www/html/uploads/<name>`, allowing `marker-basic.php` to execute as PHP (`LAB_EXECUTION_MARKER_STAGE1`). |
-| **Stage 2: App-Only Insufficient Defense** | `http://127.0.0.1:8082/?lang=en` | Naive blacklist rejects `.php` (`marker-basic.php` -> HTTP 400), but Apache handles both `.php` and `.phtml`; uploading `marker-bypass.phtml` bypasses the app filter and executes (`LAB_EXECUTION_MARKER_STAGE2`). |
-| **Stage 3: Defense in Depth** | `http://127.0.0.1:8083/?lang=en` | App layer enforces image allowlist, `finfo` + `getimagesize()`, 2MB cap, UUIDv4 rename, outside-webroot storage (`/var/lab-storage/uploads/`), and safe delivery via `/image.php`. Infra layer disables PHP execution on `/uploads` and denies direct access (`HTTP 403`). |
+| **Stage 1** | `http://127.0.0.1:8081/?lang=en` | No validation; saves inside `DocumentRoot`; `marker-basic.php` executes |
+| **Stage 2** | `http://127.0.0.1:8082/?lang=en` | Blocks `.php` (`HTTP 400`), but `marker-bypass.phtml` bypasses filter and executes |
+| **Stage 3** | `http://127.0.0.1:8083/?lang=en` | Image allowlist, content checks, outside-webroot storage, safe delivery, and Apache execution off |
 
-### Step 3: Run the Automated Verification Suite (Optional)
-
-From `labs/01-php-upload-defense/`, run the built-in verifier container to validate all three stages, normal uploads, execution markers, defenses, and safety invariants:
+Run automated verification and stop containers when finished:
 
 ```bash
+# Run end-to-end automated checks across all stages
 docker compose --profile test run --rm verifier
-```
 
-Host-side smoke test scripts are also provided:
-- Windows PowerShell: `pwsh -File tests/host-smoke.ps1`
-- macOS / Linux: `sh tests/host-smoke.sh`
-
-### Step 4: Stop and Clean Up
-
-Always stop and remove the containers when finished with your study session:
-
-```bash
+# Stop and remove containers
 docker compose down
 ```
 
----
+## Safety Summary
 
-## 6. Safety Summary (Safety by Design)
+See [SAFETY.en.md](./SAFETY.en.md) for complete technical specifications.
 
-To let learners safely observe server-side execution mechanics without creating real-world exposure, strict technical guardrails are built into every layer. See **[docs/safety.en.md](./docs/safety.en.md)** for full details.
+- **Loopback-Only Binding**: All ports explicitly bind `127.0.0.1`, blocking access from LAN neighbors.
+- **Outbound Network Isolation**: Docker network `lab_net` sets `internal: true`, preventing internet egress from containers.
+- **Non-Root Containers**: Apache and PHP run as unprivileged user `www-data` on internal port `8080`.
+- **Harmless Fixed-Marker Payloads**: Sample scripts output static markers and read-only runtime info only—zero user input reading and zero OS command execution functions.
 
-1. **Strict Loopback Binding (`127.0.0.1`)**: Published ports explicitly bind `127.0.0.1:8081:8080` through `8083:8080`, preventing access from LAN neighbors or external networks.
-2. **Isolated Internal Network (`internal: true`)**: Containers run on a Docker `internal: true` network (`lab_net`) with no outbound internet access.
-3. **Non-Root Container Execution**: Apache and PHP run as the unprivileged `www-data` user listening on internal port `8080`.
-4. **Harmless Fixed-Marker Payloads**: `samples/marker-basic.php` and `samples/marker-bypass.phtml` output only static marker strings and read-only runtime metadata (PHP version, process user, hostname, UTC timestamp). They never read user input (`$_GET`, `$_POST`, etc.) and never invoke OS command or code-eval functions (`system`, `exec`, `eval`, etc.).
+## Documentation Map
 
----
-
-## 7. Recommended Learning Path & Documentation Links
-
-Choose the guide that matches your goal:
-
-- **Deep-Dive Architecture & Threat Modeling**:
-  - [Lab 01 Architecture, DFDs & Defense-in-Depth Matrix (labs/01-php-upload-defense/README.en.md)](./labs/01-php-upload-defense/README.en.md)
-- **Self-Paced Study or 60–90 Min Study Group Workshop**:
-  - [Hands-On Workshop Guide (hands-on-guide.md)](./labs/01-php-upload-defense/docs/en/hands-on-guide.md)
-  - [Participant Threat Modeling Worksheet with Answer Key (worksheet.md)](./labs/01-php-upload-defense/docs/en/worksheet.md)
-- **Delivering a 5–10 Min Lightning Talk Live Demo**:
-  - [Lightning Talk Demo Script (lt-script.md)](./labs/01-php-upload-defense/docs/en/lt-script.md)
-- **Sample Payloads & Test Suite Reference**:
-  - [Sample Files Guide (samples/README.md)](./labs/01-php-upload-defense/samples/README.md)
-  - [Automated Verification Suite Guide (tests/README.md)](./labs/01-php-upload-defense/tests/README.md)
-- **Safety Policy & Future Lab Expansion**:
-  - [Detailed Safety Policy (docs/safety.en.md)](./docs/safety.en.md)
-  - [Multi-Lab Expansion Roadmap (docs/roadmap.en.md)](./docs/roadmap.en.md)
+- **Lab 01 Architecture & Threat Modeling**: [labs/01-php-upload-defense/README.en.md](./labs/01-php-upload-defense/README.en.md)
+- **Lab 01 Workshop & LT Materials**:
+  - [Hands-On Workshop Guide](./labs/01-php-upload-defense/docs/en/hands-on-guide.md)
+  - [Threat Modeling Worksheet](./labs/01-php-upload-defense/docs/en/worksheet.md)
+  - [Lightning Talk Demo Script](./labs/01-php-upload-defense/docs/en/lt-script.md)
+- **Samples & Test Suite**: [samples/README.en.md](./labs/01-php-upload-defense/samples/README.en.md) | [tests/README.en.md](./labs/01-php-upload-defense/tests/README.en.md)
+- **Safety Policy & Roadmap**: [SAFETY.en.md](./SAFETY.en.md) | [docs/roadmap.en.md](./docs/roadmap.en.md) | [LICENSE](./LICENSE)

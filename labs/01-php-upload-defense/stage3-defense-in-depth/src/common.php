@@ -63,8 +63,8 @@ function render_stage3_main(string $lang, string $flashHtml = ''): void
     $files = list_stored_images();
 
     $title = $isEn
-        ? 'Stage 3: Defense-in-Depth (App + Storage + Infra Layers)'
-        : 'Stage 3: 多層防御（アプリ層・ストレージ層・インフラ層の分離）';
+        ? 'Stage 3: Defense-in-Depth'
+        : 'Stage 3: 多層防御（アプリ層・保存層・インフラ層の分離）';
 
     ob_start();
     if ($flashHtml !== '') {
@@ -72,82 +72,82 @@ function render_stage3_main(string $lang, string $flashHtml = ''): void
     }
     ?>
     <section class="card stage-summary stage-safe">
-      <div class="stage-badge safe"><?= $isEn ? 'STAGE 3 — MULTI-LAYER DEFENSE-IN-DEPTH' : 'STAGE 3 — 多層防御モデル' ?></div>
+      <div class="stage-badge safe"><?= $isEn ? 'STAGE 3 — DEFENSE-IN-DEPTH' : 'STAGE 3 — 多層防御' ?></div>
       <h1><?= esc($title) ?></h1>
       <?php if ($isEn): ?>
         <p>
-          Stage 3 breaks every link of the <strong>Upload &rarr; Store &rarr; Serve &rarr; Interpret</strong> chain using independent controls across application, filesystem, and web server layers:
+          Independent controls break every step of <strong>Upload &rarr; Store &rarr; Serve &rarr; Execute</strong> across app, storage, and web server layers.
         </p>
         <ul class="boundary-list">
-          <li><strong>App Layer Validation:</strong> Strict allowlist (<code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.gif</code>), 2 MB size cap, server-side <code>finfo(FILEINFO_MIME_TYPE)</code> magic-byte check, and <code>getimagesize()</code> structural image parsing.</li>
-          <li><strong>Storage Isolation:</strong> Discards the client filename in favor of a random <code>UUIDv4</code> name and writes outside <code>DocumentRoot</code> (<code>/var/lab-storage/uploads/</code>).</li>
-          <li><strong>Safe Delivery Endpoint:</strong> <code>/image.php?file=&lt;uuid&gt;.&lt;ext&gt;</code> validates the UUID pattern and emits <code>X-Content-Type-Options: nosniff</code>, <code>Content-Security-Policy: default-src 'none'</code>, and <code>X-Frame-Options: DENY</code>.</li>
-          <li><strong>Apache / Infra Hardening:</strong> Enforces <code>AllowOverride None</code> (ignoring <code>.htaccess</code>), disables the PHP engine under <code>/var/www/html/uploads</code>, and blocks direct access (HTTP <code>403</code>).</li>
+          <li><strong>App Layer:</strong> Enforces extension allowlist (<code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.gif</code>), 2 MB cap, <code>finfo</code> MIME check, and <code>getimagesize()</code> header check.</li>
+          <li><strong>Storage Layer:</strong> Replaces client filename with random <code>UUIDv4</code> and stores outside <code>DocumentRoot</code> in <code>/var/lab-storage/uploads/</code>.</li>
+          <li><strong>Delivery Layer:</strong> <code>/image.php?file=&lt;uuid&gt;.&lt;ext&gt;</code> validates UUID format and sets <code>X-Content-Type-Options: nosniff</code> and <code>Content-Security-Policy: default-src 'none'</code>.</li>
+          <li><strong>Infra Layer:</strong> Enforces <code>AllowOverride None</code>, disables PHP on <code>/uploads/</code>, and denies direct access with HTTP <code>403</code>.</li>
         </ul>
       <?php else: ?>
         <p>
-          Stage 3 では <strong>Upload &rarr; Store &rarr; Serve &rarr; Interpret</strong> の各境界に対して、アプリ層・ストレージ層・インフラ層で独立した防御を重ねています。
+          <strong>アップロード → 保存 → 配信 → 実行</strong> の全段階を、アプリ層・保存層・インフラ層の独立した防御で遮断します。
         </p>
         <ul class="boundary-list">
-          <li><strong>アプリケーション層の厳格検証:</strong> 拡張子ホワイトリスト（<code>.png</code>, <code>.jpg</code>, <code>.jpeg</code>, <code>.gif</code>）、2 MB 上限、サーバ側 <code>finfo(FILEINFO_MIME_TYPE)</code> と <code>getimagesize()</code> による実データ検証を実施します。</li>
-          <li><strong>ストレージ分離:</strong> クライアント指定のファイル名を破棄して <code>UUIDv4</code> に置換し、<code>DocumentRoot</code> 外の <code>/var/lab-storage/uploads/</code> に保存します。</li>
-          <li><strong>安全な配信エンドポイント:</strong> <code>/image.php?file=&lt;uuid&gt;.&lt;ext&gt;</code> で正規表現検証を行い、<code>X-Content-Type-Options: nosniff</code>・<code>Content-Security-Policy: default-src 'none'</code>・<code>X-Frame-Options: DENY</code> を付与して配信します。</li>
-          <li><strong>Apache / インフラ層の防御:</strong> <code>AllowOverride None</code>（<code>.htaccess</code> 無効化）に加え、万一公開ディレクトリ内の <code>/uploads/</code> にファイルが存在しても PHP エンジン無効化と <code>Require all denied</code>（HTTP <code>403</code>）で遮断します。</li>
+          <li><strong>アプリ層:</strong> 拡張子許可リスト（<code>.png</code>・<code>.jpg</code>・<code>.jpeg</code>・<code>.gif</code>）、2 MB 上限、<code>finfo</code> と <code>getimagesize()</code> で実データを検証します。</li>
+          <li><strong>保存層:</strong> 元のファイル名を破棄して <code>UUIDv4</code> に置換し、<code>DocumentRoot</code> 外の <code>/var/lab-storage/uploads/</code> に保存します。</li>
+          <li><strong>配信層:</strong> <code>/image.php?file=&lt;uuid&gt;.&lt;ext&gt;</code> で形式検証し、<code>nosniff</code> と <code>Content-Security-Policy: default-src 'none'</code> を付与します。</li>
+          <li><strong>インフラ層:</strong> <code>AllowOverride None</code>、PHP エンジン無効化、<code>Require all denied</code> により <code>/uploads/</code> への直接アクセスを HTTP <code>403</code> で遮断します。</li>
         </ul>
       <?php endif; ?>
     </section>
 
     <div class="grid-two">
       <section class="card">
-        <h2><?= $isEn ? '1. Upload an Image (Protected)' : '1. ファイルをアップロード（多層防御）' ?></h2>
+        <h2><?= $isEn ? '1. Upload Image' : '1. 画像アップロード' ?></h2>
         <p class="muted">
           <?= $isEn
-              ? 'Try sample-valid.png (accepted: 200) vs. marker-basic.php, marker-bypass.phtml, or disguised PHP-in-.png (rejected: 400).'
-              : 'sample-valid.png（200 で許可）と、marker-basic.php / marker-bypass.phtml / 偽装 .png（400 で拒否）を試してください。' ?>
+              ? 'Try sample-valid.png (200) vs. marker-basic.php, marker-bypass.phtml, or spoofed .png (400).'
+              : 'sample-valid.png（200 許可）と marker-basic.php / marker-bypass.phtml / 偽装 .png（400 拒否）を比較します。' ?>
         </p>
         <form action="/upload.php?lang=<?= esc($lang) ?>" method="post" enctype="multipart/form-data" class="upload-form">
           <label for="file-input" class="file-label">
-            <?= $isEn ? 'Select image file:' : 'アップロードするファイルを選択:' ?>
+            <?= $isEn ? 'Choose image:' : '画像ファイルを選択:' ?>
           </label>
           <input id="file-input" type="file" name="file" required>
           <button type="submit" class="btn btn-primary">
-            <?= $isEn ? 'Upload to Stage 3' : 'Stage 3 にアップロード' ?>
+            <?= $isEn ? 'Upload' : 'アップロード' ?>
           </button>
         </form>
       </section>
 
       <section class="card">
-        <h2><?= $isEn ? '2. Infra Guard & Reset' : '2. インフラ層ガード確認とリセット' ?></h2>
+        <h2><?= $isEn ? '2. Infra Guard & Reset' : '2. インフラ層ガード確認・リセット' ?></h2>
         <p class="muted">
           <?= $isEn
-              ? 'Verify that pre-seeded /uploads/infra-guard-check.phtml inside DocumentRoot is blocked by Apache (HTTP 403) and never runs:'
-              : 'DocumentRoot 内に事前配置された検証用フィクスチャ /uploads/infra-guard-check.phtml が Apache により HTTP 403 で遮断され、動作しないことを確認できます:' ?>
+              ? 'Confirm that pre-seeded /uploads/infra-guard-check.phtml is blocked with HTTP 403:'
+              : '事前配置された /uploads/infra-guard-check.phtml が HTTP 403 で遮断されることを確認します:' ?>
         </p>
         <p>
           <a class="btn btn-outline" href="/uploads/infra-guard-check.phtml" target="_blank" rel="noopener">
-            <?= $isEn ? 'Test /uploads/infra-guard-check.phtml (Expect 403)' : '/uploads/infra-guard-check.phtml を確認 (HTTP 403)' ?>
+            <?= $isEn ? 'Check /uploads/infra-guard-check.phtml (403)' : '/uploads/infra-guard-check.phtml の 403 遮断を確認' ?>
           </a>
         </p>
         <hr class="divider">
         <form action="/reset.php?lang=<?= esc($lang) ?>" method="post">
           <button type="submit" class="btn btn-secondary">
-            <?= $isEn ? 'Reset Stage 3 Uploads' : 'Stage 3 のアップロードをリセット' ?>
+            <?= $isEn ? 'Reset Stage 3' : 'Stage 3 をリセット' ?>
           </button>
         </form>
       </section>
     </div>
 
     <section class="card">
-      <h2><?= $isEn ? 'Stored Images (Outside DocumentRoot via /image.php)' : '保存済み画像一覧（DocumentRoot 外・/image.php 経由配信）' ?></h2>
+      <h2><?= $isEn ? 'Stored Images (Served via /image.php)' : '保存済み画像一覧' ?></h2>
       <?php if ($files === []): ?>
-        <p class="muted"><?= $isEn ? 'No uploaded images currently stored.' : '現在保存されているアップロード画像はありません。' ?></p>
+        <p class="muted"><?= $isEn ? 'No uploaded images.' : '保存されている画像はありません。' ?></p>
       <?php else: ?>
         <table class="file-table">
           <thead>
             <tr>
-              <th><?= $isEn ? 'Safe Delivery URL (UUIDv4)' : '安全な配信 URL (UUIDv4)' ?></th>
-              <th><?= $isEn ? 'Size (bytes)' : 'サイズ (bytes)' ?></th>
-              <th><?= $isEn ? 'Modified (UTC)' : '更新日時 (UTC)' ?></th>
+              <th><?= $isEn ? 'Delivery URL' : '配信 URL' ?></th>
+              <th><?= $isEn ? 'Size (bytes)' : 'バイト数' ?></th>
+              <th><?= $isEn ? 'Updated (UTC)' : 'UTC 更新日時' ?></th>
             </tr>
           </thead>
           <tbody>
@@ -180,7 +180,7 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= esc($pageTitle) ?> | Upload-to-Execution Defense Lab</title>
+  <title><?= esc($pageTitle) ?> | Lab 01</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -193,7 +193,7 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
     .safety-banner {
       background: #991b1b;
       color: #ffffff;
-      padding: 0.75rem 1.25rem;
+      padding: 0.7rem 1.25rem;
       font-weight: 700;
       text-align: center;
       border-bottom: 3px solid #ef4444;
@@ -202,7 +202,7 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
     .topbar {
       background: #1f2937;
       color: #f9fafb;
-      padding: 0.75rem 1.25rem;
+      padding: 0.7rem 1.25rem;
     }
     .topbar-inner {
       max-width: 980px;
@@ -331,9 +331,9 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
 <body>
   <div class="safety-banner" role="alert">
     <?php if ($isEn): ?>
-      WARNING: FOR LOCAL EDUCATIONAL USE ONLY - DO NOT DEPLOY PUBLICLY (127.0.0.1 Isolated Container Lab)
+      WARNING: FOR LOCAL EDUCATIONAL USE ONLY - DO NOT DEPLOY PUBLICLY
     <?php else: ?>
-      警告: ローカル学習専用・公開サーバへのデプロイ厳禁（127.0.0.1 ローカル分離ネットワーク専用ラボ）
+      警告: ローカル学習専用・公開サーバへのデプロイ厳禁
     <?php endif; ?>
   </div>
 
@@ -341,18 +341,18 @@ function render_layout(string $lang, string $pageTitle, string $bodyContent): vo
     <div class="topbar-inner">
       <nav class="stage-nav" aria-label="Stage Switcher">
         <a class="stage-link" href="http://127.0.0.1:8081/?lang=<?= esc($lang) ?>">
-          Stage 1 (:8081 <?= $isEn ? 'Vulnerable' : '脆弱' ?>)
+          Stage 1 :8081 <?= $isEn ? 'Vulnerable' : '脆弱' ?>
         </a>
         <a class="stage-link" href="http://127.0.0.1:8082/?lang=<?= esc($lang) ?>">
-          Stage 2 (:8082 <?= $isEn ? 'App-Only' : 'アプリ層のみ' ?>)
+          Stage 2 :8082 <?= $isEn ? 'App-Only' : '単一層防御' ?>
         </a>
         <a class="stage-link active" href="http://127.0.0.1:8083/?lang=<?= esc($lang) ?>">
-          Stage 3 (:8083 <?= $isEn ? 'Defense-in-Depth' : '多層防御' ?>)
+          Stage 3 :8083 <?= $isEn ? 'Defense-in-Depth' : '多層防御' ?>
         </a>
       </nav>
       <nav class="lang-nav" aria-label="Language Switcher">
-        <a class="lang-link <?= !$isEn ? 'active' : '' ?>" href="/?lang=ja">日本語 (JA)</a>
-        <a class="lang-link <?= $isEn ? 'active' : '' ?>" href="/?lang=en">English (EN)</a>
+        <a class="lang-link <?= !$isEn ? 'active' : '' ?>" href="/?lang=ja">日本語</a>
+        <a class="lang-link <?= $isEn ? 'active' : '' ?>" href="/?lang=en">English</a>
       </nav>
     </div>
   </header>

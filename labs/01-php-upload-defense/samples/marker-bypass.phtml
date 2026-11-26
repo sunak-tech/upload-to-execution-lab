@@ -23,7 +23,7 @@ $esc = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES |
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Harmless Marker Output - Stage 2 (.phtml Bypass)</title>
+  <title>Harmless Marker Output - Stage 2 (.phtml)</title>
   <style>
     body { font-family: sans-serif; background: #fffbeb; color: #1f2937; margin: 2rem; line-height: 1.6; }
     .box { max-width: 680px; border: 2px solid #d97706; border-radius: 8px; background: #ffffff; padding: 1.5rem; }
@@ -39,8 +39,7 @@ $esc = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES |
     <span class="badge">HARMLESS LAB MARKER (.phtml)</span>
     <h1><?= $esc($marker) ?></h1>
     <p>
-      The naive <code>.php</code> denylist was bypassed via <code>.phtml</code> because Apache still maps <code>.phtml</code> to the PHP handler.<br>
-      単純な <code>.php</code> ブラックリストを <code>.phtml</code> で回避し、Apache 側のハンドラ設定により PHP として解釈されました（無害な固定情報のみを表示しています）。
+      <code>.php</code> 拒否リストを <code>.phtml</code> で回避し、Apache の PHP ハンドラにより実行されました（無害な固定情報のみ表示）。
     </p>
     <dl>
       <dt>Marker ID</dt>
@@ -51,7 +50,7 @@ $esc = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES |
       <dd><?= $esc($processUser) ?></dd>
       <dt>Container Host</dt>
       <dd><?= $esc($hostName) ?></dd>
-      <dt>Timestamp (UTC)</dt>
+      <dt>UTC Time</dt>
       <dd><?= $esc($utcTime) ?></dd>
     </dl>
   </div>

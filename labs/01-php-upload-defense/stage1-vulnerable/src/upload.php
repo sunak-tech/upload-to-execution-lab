@@ -13,9 +13,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         $lang,
         $isEn ? 'Method Not Allowed' : '許可されていないメソッド',
         '<div class="alert alert-err">'
-        . esc($isEn ? 'Use POST /upload.php to submit a file.' : 'POST /upload.php を使用してファイルを送信してください。')
+        . esc($isEn ? 'Use POST /upload.php to upload a file.' : 'POST /upload.php から送信してください。')
         . '</div><p><a class="btn btn-secondary" href="/?lang=' . esc($lang) . '">'
-        . esc($isEn ? 'Back to Stage 1' : 'Stage 1 トップへ戻る') . '</a></p>'
+        . esc($isEn ? 'Back to Stage 1' : 'Stage 1 へ戻る') . '</a></p>'
     );
     exit;
 }
@@ -25,14 +25,10 @@ if (!isset($_FILES['file']) || !is_array($_FILES['file'])) {
     render_layout(
         $lang,
         $isEn ? 'Upload Rejected (400)' : 'アップロード拒否 (400)',
-        '<div class="alert alert-err"><strong>'
-        . esc($isEn ? 'Upload Error:' : 'アップロードエラー:')
-        . '</strong> '
-        . esc($isEn
-            ? 'No file payload found under form field "file" (multipart/form-data required). / フォーム項目 "file" が見つかりません。'
-            : 'フォーム項目 "file" が送信されていません (No "file" field in multipart/form-data request)。')
+        '<div class="alert alert-err">'
+        . esc($isEn ? 'Missing "file" field in multipart/form-data request.' : 'フォーム項目 "file" が指定されていません。')
         . '</div><p><a class="btn btn-secondary" href="/?lang=' . esc($lang) . '">'
-        . esc($isEn ? 'Back to Stage 1' : 'Stage 1 トップへ戻る') . '</a></p>'
+        . esc($isEn ? 'Back to Stage 1' : 'Stage 1 へ戻る') . '</a></p>'
     );
     exit;
 }
@@ -46,21 +42,16 @@ if ($errCode !== UPLOAD_ERR_OK || $tmpPath === '' || !is_uploaded_file($tmpPath)
     render_layout(
         $lang,
         $isEn ? 'Upload Rejected (400)' : 'アップロード拒否 (400)',
-        '<div class="alert alert-err"><strong>'
-        . esc($isEn ? 'Upload Error:' : 'アップロードエラー:')
-        . '</strong> '
-        . esc(sprintf(
-            'PHP upload transport error (code %d) / ファイル受信エラー (code %d)',
-            $errCode,
-            $errCode
-        ))
+        '<div class="alert alert-err">'
+        . esc($isEn
+            ? sprintf('Upload failed with PHP error code %d.', $errCode)
+            : sprintf('ファイルの受信に失敗しました（エラーコード: %d）。', $errCode))
         . '</div><p><a class="btn btn-secondary" href="/?lang=' . esc($lang) . '">'
-        . esc($isEn ? 'Back to Stage 1' : 'Stage 1 トップへ戻る') . '</a></p>'
+        . esc($isEn ? 'Back to Stage 1' : 'Stage 1 へ戻る') . '</a></p>'
     );
     exit;
 }
 
-// Stage 1 intentional weakness: basename() path sanitization ONLY — no extension or content checks.
 $normalized = str_replace('\\', '/', $rawName);
 $safeName = basename($normalized);
 
@@ -75,12 +66,10 @@ if (
     render_layout(
         $lang,
         $isEn ? 'Invalid Filename (400)' : '不正なファイル名 (400)',
-        '<div class="alert alert-err"><strong>'
-        . esc($isEn ? 'Rejected by filename sanitizer:' : 'ファイル名サニタイズにより拒否:')
-        . '</strong> '
-        . esc('Empty or reserved filename is not allowed. / 空または予約済みのファイル名は指定できません。')
+        '<div class="alert alert-err">'
+        . esc($isEn ? 'Empty or reserved filename is not allowed.' : '空または予約済みのファイル名は使用できません。')
         . '</div><p><a class="btn btn-secondary" href="/?lang=' . esc($lang) . '">'
-        . esc($isEn ? 'Back to Stage 1' : 'Stage 1 トップへ戻る') . '</a></p>'
+        . esc($isEn ? 'Back to Stage 1' : 'Stage 1 へ戻る') . '</a></p>'
     );
     exit;
 }
@@ -90,9 +79,9 @@ if (!move_uploaded_file($tmpPath, $destPath)) {
     http_response_code(500);
     render_layout(
         $lang,
-        $isEn ? 'Storage Failure' : '保存失敗',
+        $isEn ? 'Storage Failure' : '保存エラー',
         '<div class="alert alert-err">'
-        . esc($isEn ? 'Failed to move uploaded file.' : 'ファイルの保存に失敗しました。')
+        . esc($isEn ? 'Failed to save uploaded file.' : 'ファイルの保存に失敗しました。')
         . '</div>'
     );
     exit;
@@ -105,11 +94,11 @@ http_response_code(200);
 ob_start();
 ?>
 <div class="alert alert-ok">
-  <h2><?= $isEn ? 'Upload Accepted (Stage 1 — No Validation)' : 'アップロード成功（Stage 1 — 検証なし）' ?></h2>
+  <h2><?= $isEn ? 'Upload Accepted (Stage 1)' : 'Stage 1 アップロード完了' ?></h2>
   <p>
     <?= $isEn
-        ? 'Saved directly inside DocumentRoot without extension or content checks:'
-        : '拡張子やファイル内容の検証を行わず、DocumentRoot 配下へそのまま保存されました:' ?>
+        ? 'Saved directly inside DocumentRoot without validation:'
+        : '未検証のまま DocumentRoot 内に保存されました:' ?>
   </p>
   <p>
     <strong>URL:</strong>
@@ -118,7 +107,7 @@ ob_start();
 </div>
 <p>
   <a class="btn btn-secondary" href="/?lang=<?= esc($lang) ?>">
-    <?= $isEn ? 'Back to Stage 1 Top' : 'Stage 1 トップへ戻る' ?>
+    <?= $isEn ? 'Back to Stage 1' : 'Stage 1 へ戻る' ?>
   </a>
 </p>
 <?php
