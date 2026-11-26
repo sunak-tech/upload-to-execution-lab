@@ -52,7 +52,7 @@ flowchart LR
 | `sample-valid.png` | `HTTP [     ]` | `[                           ]` | `[                                 ]` |
 | `marker-basic.php` | `HTTP [     ]` | `[                           ]` | `[                                 ]` |
 
-#### 考察クエスチョン（Stage 1）
+#### 考察（Stage 1）
 **Q1. `marker-basic.php` が単なるテキスト表示ではなく「サーバー上でPHPコードとして実行」されたのは、4段階（Upload / Store / Serve / Execute）でそれぞれどの条件が揃ってしまったからですか？**
 - Upload：`[                                                               ]`
 - Store：`[                                                                ]`

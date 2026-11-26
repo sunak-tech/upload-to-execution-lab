@@ -1,4 +1,4 @@
-# Upload-to-Execution Lab (`upload-to-execution-lab`)
+# Upload-to-Execution Lab 
 
 **🌐 Language / 言語を選択してください:**
 **[🇯🇵 日本語ガイド (README.ja.md)](./README.ja.md)** | **[🇺🇸 English Guide (README.en.md)](./README.en.md)**
@@ -16,7 +16,7 @@
 
 ## 概要 / Overview
 
-**Upload-to-Execution Lab** は、ファイルアップロード機能がどのような経路（`Upload -> Store -> Serve -> Execute`）を経てサーバーサイドコード実行（RCE）に至るのか、なぜアプリケーション層のブラックリスト単体では防御が破綻するのか、そして**アプリケーション層とインフラ層の多層防御（Defense in Depth）**によってどのように攻撃連鎖を断ち切るのかを体験的に学ぶハンズオン教材です。
+**Upload-to-Execution Lab** は、ファイルアップロード機能がどのような経路（`Upload -> Store -> Serve -> Execute`）を経てRCEに至るのか、なぜアプリケーション層のブラックリスト単体では防御が破綻するのか、そして**アプリケーション層とインフラ層の多層防御（Defense in Depth）**によってどのように攻撃連鎖を断ち切るのかを体験的に学ぶハンズオン教材です。
 
 **Upload-to-Execution Lab** is a hands-on threat modeling and secure architecture lab exploring how file upload features lead to server-side code execution (`Upload -> Store -> Serve -> Execute`), why naive application-only blacklists fail across parser trust boundaries, and how **Defense in Depth** across application and infrastructure layers breaks the attack chain.
 
